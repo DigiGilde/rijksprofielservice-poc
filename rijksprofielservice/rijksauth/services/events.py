@@ -1,6 +1,6 @@
 from rijksprofielservice.rijksauth.models import AuthEvent
 
-SUPPORTED_AUTH_EVENTS = {"Login.success", "Login.fail"}
+SUPPORTED_AUTH_EVENTS = {"Login.success", "Login.fail", "Login.provisioned"}
 
 
 def create_auth_event(user_email, name, context=None):

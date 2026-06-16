@@ -1,20 +1,8 @@
-import base64
 import json
-import time
 
 import pytest
 
 pytestmark = pytest.mark.django_db
-
-
-def _b64url(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
-
-
-def _make_token(*, client_id="mock-wies", exp_offset=3600):
-    header = {"alg": "none", "typ": "JWT"}
-    payload = {"azp": client_id, "iss": "mock-issuer", "exp": int(time.time()) + exp_offset}
-    return f"{_b64url(json.dumps(header).encode())}.{_b64url(json.dumps(payload).encode())}.mock"
 
 
 # -------------------------- happy paths --------------------------
@@ -112,8 +100,8 @@ def test_api_returns_401_without_token(client, mock_wies):
     assert response.status_code == 401
 
 
-def test_api_returns_401_for_expired_token(client, alice, mock_wies, alice_consents_wies):
-    expired = _make_token(exp_offset=-60)
+def test_api_returns_401_for_expired_token(client, alice, mock_wies, alice_consents_wies, mint_token):
+    expired = mint_token(exp_offset=-60)
     response = client.get(
         "/api/v1/profiles/sub-alice",
         HTTP_AUTHORIZATION=f"Bearer {expired}",
@@ -121,10 +109,10 @@ def test_api_returns_401_for_expired_token(client, alice, mock_wies, alice_conse
     assert response.status_code == 401
 
 
-def test_api_returns_401_for_unapproved_app(client, alice, mock_wies, alice_consents_wies):
+def test_api_returns_401_for_unapproved_app(client, alice, mock_wies, alice_consents_wies, mint_token):
     mock_wies.is_approved = False
     mock_wies.save()
-    token = _make_token(client_id="mock-wies")
+    token = mint_token(client_id="mock-wies")
     response = client.get(
         "/api/v1/profiles/sub-alice",
         HTTP_AUTHORIZATION=f"Bearer {token}",
@@ -132,8 +120,8 @@ def test_api_returns_401_for_unapproved_app(client, alice, mock_wies, alice_cons
     assert response.status_code == 401
 
 
-def test_api_returns_401_for_unknown_client(client, alice, mock_wies, alice_consents_wies):
-    token = _make_token(client_id="onbekend")
+def test_api_returns_401_for_unknown_client(client, alice, mock_wies, alice_consents_wies, mint_token):
+    token = mint_token(client_id="onbekend")
     response = client.get(
         "/api/v1/profiles/sub-alice",
         HTTP_AUTHORIZATION=f"Bearer {token}",

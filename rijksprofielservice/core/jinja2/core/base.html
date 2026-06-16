@@ -25,6 +25,8 @@
   <nav>
     <a href="{{ url('profile-edit') }}">Mijn profiel</a>
     <a href="{{ url('consent-list') }}">Toestemmingen</a>
+    {% if DEBUG %}<a href="{{ url('demo-mock-wies') }}">Mock Wies</a>{% endif %}
+    {% if DEBUG %}<a href="{{ url('demo-mock-amt') }}">Mock AMT</a>{% endif %}
     <span style="margin-left:auto;">
       {% if request.user.is_authenticated %}
         {{ request.user.email }} · <a href="{{ url('logout') }}">Uitloggen</a>

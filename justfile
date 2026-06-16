@@ -14,6 +14,7 @@ setup:
   docker compose run --rm django python manage.py migrate
   docker compose run --rm django python manage.py loaddata seed_apps
   docker compose run --rm django python manage.py ensure_initial_user
+  docker compose run --rm django python manage.py seed_demo_data
   docker compose run --rm django python manage.py createsuperuser --noinput || true
 
 # Start containers (Postgres + Django dev server)
@@ -40,6 +41,28 @@ lint:
 format:
   uv run ruff check --fix .
   uv run ruff format .
+
+# Keycloak: print URLs van admin console en profielservice realm
+keycloak-info:
+  @echo "Admin console:  http://localhost:8081/admin  (admin/admin)"
+  @echo "Realm:          http://localhost:8081/realms/profielservice"
+  @echo "Token endpoint: http://localhost:8081/realms/profielservice/protocol/openid-connect/token"
+
+# Haal een client-credentials access_token uit de profielservice realm
+keycloak-token client_id="mock-wies" client_secret="local-dev-secret-wies":
+  @curl -s -X POST http://localhost:8081/realms/profielservice/protocol/openid-connect/token \
+    -d grant_type=client_credentials \
+    -d client_id={{client_id}} \
+    -d client_secret={{client_secret}} | jq -r .access_token
+
+# Demo-flow: start met SKIP_OIDC=false zodat SSO-login via Wies-dev realm loopt
+demo-sso:
+  SKIP_OIDC=false docker compose up
+
+# Print landing-URLs voor de OAuth-style consent demo
+demo-url:
+  @echo "Mock Wies landing: http://localhost:8000/demo/mock-wies-landing/"
+  @echo "Mock AMT  landing: http://localhost:8000/demo/mock-amt-landing/"
 
 # Download vendored frontend libs
 update-vendor:

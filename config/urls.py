@@ -24,6 +24,13 @@ urlpatterns = [
     path("profiel/foto/verwijderen/", core_views.avatar_delete, name="avatar-delete"),
     path("toestemmingen/", core_views.consent_list, name="consent-list"),
     path("toestemmingen/<int:application_id>/intrekken/", core_views.consent_revoke, name="consent-revoke"),
+    # OAuth-style consent flow (PoC1 light mimick; echte OAuth Authorization Code → PoC2)
+    path("oauth/authorize", core_views.oauth_authorize, name="oauth-authorize"),
+    path("oauth/consent", core_views.oauth_consent_screen, name="oauth-consent"),
+    path("oauth/consent/decide", core_views.oauth_consent_decide, name="oauth-consent-decide"),
+    # Demo mock consuming-app landings
+    path("demo/mock-wies-landing/", core_views.mock_wies_landing, name="demo-mock-wies"),
+    path("demo/mock-amt-landing/", core_views.mock_amt_landing, name="demo-mock-amt"),
     # Avatar serving
     path("avatars/<int:user_id>.jpg", core_views.avatar, name="avatar"),
     # REST API — batch route VOOR de detail route, anders matcht "batch" als subject_id.

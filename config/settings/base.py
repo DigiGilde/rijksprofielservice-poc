@@ -116,6 +116,12 @@ OIDC_POST_LOGOUT_COOKIE_NAME = "rijksprofielservice_post_logout"
 # Profielservice realm (M2M client-credentials) — gebruikt door REST API.
 PROFIELSERVICE_JWT_ISSUER = os.environ.get("PROFIELSERVICE_JWT_ISSUER", "")
 PROFIELSERVICE_JWT_AUDIENCE = os.environ.get("PROFIELSERVICE_JWT_AUDIENCE", "profielservice")
+# Lokale RS256 test-keypair accepteren (alleen voor demo/dev zonder echte Keycloak-roundtrip).
+# Tokens met kid="test-kid" worden dan geverifieerd met config/test_keys/jwt_test_pub.pem.
+# MAG NIET op true in productie staan.
+PROFIELSERVICE_JWT_ALLOW_TEST_KEY = os.environ.get("PROFIELSERVICE_JWT_ALLOW_TEST_KEY", "").lower() == "true"
+PROFIELSERVICE_JWT_TEST_PUBLIC_KEY_PATH = BASE_DIR / "config" / "test_keys" / "jwt_test_pub.pem"
+PROFIELSERVICE_JWT_TEST_PRIVATE_KEY_PATH = BASE_DIR / "config" / "test_keys" / "jwt_test_priv.pem"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

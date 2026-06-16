@@ -55,12 +55,18 @@ class Application(models.Model):
     beschrijving = models.TextField(blank=True)
     # Lijst van veldnamen uit FIELD_CHOICES.
     requested_fields = models.JSONField(default=list)
+    # Whitelist van toegestane redirect_uri's voor de OAuth-style consent flow.
+    # Exacte match (geen wildcards) om open-redirect te voorkomen.
+    redirect_uris = models.JSONField(default=list)
     is_approved = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.naam
+
+    def is_valid_redirect_uri(self, candidate: str) -> bool:
+        return candidate in (self.redirect_uris or [])
 
 
 class Consent(models.Model):

@@ -43,14 +43,19 @@ def login(request):
 def auth(request):
     oidc_response = _get_oidc().authorize_access_token(request)
     userinfo = oidc_response["userinfo"]
-    user = auth_authenticate(request, username=userinfo["sub"], email=userinfo["email"])
+    user = auth_authenticate(
+        request,
+        username=userinfo["sub"],
+        email=userinfo["email"],
+        first_name=userinfo.get("given_name", ""),
+        last_name=userinfo.get("family_name", ""),
+    )
     if user:
+        # Zet OIDC `sub` in session vóór auth_login, zodat de user_logged_in signal
+        # (die UserProfile.sso_subject vult) de waarde kan lezen tijdens de login.
+        request.session[settings.OIDC_SUBJECT_SESSION_KEY] = userinfo["sub"]
         auth_login(request, user)
         request.session[settings.OIDC_ID_TOKEN_SESSION_KEY] = oidc_response.get("id_token")
-        # TODO: generaliseren naar upstream rijksauth (Wies-repo).
-        # Andere consumers hebben de Keycloak `sub` ook nodig om profielen aan
-        # SSO-identiteiten te koppelen; nu nog lokaal toegevoegd.
-        request.session[settings.OIDC_SUBJECT_SESSION_KEY] = userinfo["sub"]
         logger.info("login successful, access granted")
         create_auth_event(user.email, "Login.success")
         response = redirect(request.build_absolute_uri(reverse("home")))

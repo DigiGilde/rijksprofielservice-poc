@@ -1,0 +1,21 @@
+{% extends "core/base.html" %}
+{% block title %}Toestemming geven — {{ app.naam }}{% endblock %}
+{% block content %}
+<h1>{{ app.naam }} vraagt toegang tot je profiel</h1>
+<p>{{ app.beschrijving }}</p>
+
+<p><strong>De volgende gegevens worden gedeeld als je toestemt:</strong></p>
+<ul>
+  {% for f in effective_fields %}<li>{{ f }}</li>{% endfor %}
+</ul>
+
+<form method="post" action="{{ url('oauth-consent-decide') }}" style="display:flex; gap:0.5rem; margin-top:1.5rem;">
+  {{ get_csrf_hidden_input(request) | safe }}
+  <button name="decision" value="grant" type="submit">Toestemming geven</button>
+  <button name="decision" value="deny" type="submit" class="danger">Weigeren</button>
+</form>
+
+<p style="margin-top:1.5rem; color:#666; font-size:0.9rem;">
+  Je kunt deze toestemming op elk moment intrekken via <a href="{{ url('consent-list') }}">Toestemmingen</a>.
+</p>
+{% endblock %}

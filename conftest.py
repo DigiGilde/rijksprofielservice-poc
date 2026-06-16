@@ -75,3 +75,41 @@ def wies_token(mock_wies):
     out = StringIO()
     call_command("mint_test_token", "--app=mock-wies", stdout=out)
     return out.getvalue().strip()
+
+
+@pytest.fixture(autouse=True)
+def _clear_jwks_cache():
+    """Voorkom dat tests elkaars JWKS-cache zien."""
+    from rijksprofielservice.core.api.auth import _clear_cache
+
+    _clear_cache()
+    yield
+    _clear_cache()
+
+
+@pytest.fixture
+def mint_token():
+    """Helper: mint een RS256 token met de test-keypair.
+
+    Parameters laten testen toe om kid/alg/iss/azp/exp af te wijken voor negatieve checks.
+    """
+    import time
+
+    from authlib.jose import JsonWebKey, JsonWebToken
+    from django.conf import settings
+
+    def _mint(*, client_id="mock-wies", iss=None, exp_offset=3600, kid="test-kid", alg="RS256"):
+        with settings.PROFIELSERVICE_JWT_TEST_PRIVATE_KEY_PATH.open("rb") as f:
+            private_key = JsonWebKey.import_key(f.read())
+        now = int(time.time())
+        header = {"alg": alg, "typ": "JWT", "kid": kid}
+        payload = {
+            "iss": iss if iss is not None else settings.PROFIELSERVICE_JWT_ISSUER,
+            "azp": client_id,
+            "client_id": client_id,
+            "iat": now,
+            "exp": now + exp_offset,
+        }
+        return JsonWebToken([alg]).encode(header, payload, private_key).decode()
+
+    return _mint
