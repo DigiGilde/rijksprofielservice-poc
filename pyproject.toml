@@ -1,0 +1,54 @@
+[project]
+name = "rijksprofielservice"
+dynamic = ["version"]
+requires-python = ">=3.14"
+dependencies = [
+  "django==6.0.6",
+  "whitenoise==6.12.0",
+  "gunicorn==25.3.0",
+  "Authlib==1.7.2",
+  "requests==2.34.2",
+  "urllib3>=2.7.0",
+  "jinja2==3.1.6",
+  "psycopg[binary]>=3.3.4",
+  "djangorestframework>=3.16",
+  "Pillow>=11.1",
+]
+
+[dependency-groups]
+dev = [
+  "pre-commit>=4.6.0",
+  "ruff>=0.15.15",
+  "djlint>=1.36.0",
+  "pytest>=9.0.3",
+  "pytest-django>=4.9",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "N", "UP", "B", "C4", "DJ", "DTZ", "SIM", "PTH", "RUF"]
+ignore = ["RUF012"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rijksprofielservice", "config"]
+
+[tool.ruff.lint.per-file-ignores]
+"*/migrations/*" = ["E501"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+
+[tool.djlint]
+profile = "jinja"
+indent = 2
+max_line_length = 120

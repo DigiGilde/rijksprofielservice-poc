@@ -1,0 +1,47 @@
+# Byte-compiled
+__pycache__/
+*.py[codz]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# uv editable install metadata
+rijksprofielservice.egg-info/
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+
+# Env
+.env
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+
+# Ruff / coverage / pytest
+.ruff_cache/
+.coverage
+.pytest_cache/
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/plans/
+.claude/settings.local.json
+
+# OS
+.DS_Store

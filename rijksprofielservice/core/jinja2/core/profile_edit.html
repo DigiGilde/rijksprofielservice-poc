@@ -1,0 +1,112 @@
+{% extends "core/base.html" %}
+{% block title %}Mijn profiel — Rijksprofielservice{% endblock %}
+{% block content %}
+<h1>Mijn profiel</h1>
+
+<p><strong>{{ profile.user.email }}</strong></p>
+
+{# Avatar staat los van het profiel-form: uploaden/verwijderen is direct. #}
+<form method="post" action="{{ url('avatar-update') }}" enctype="multipart/form-data" id="avatar-form">
+  {{ get_csrf_hidden_input(request) | safe }}
+  <div class="avatar-block">
+    <label for="id_avatar" class="avatar-trigger" title="Foto kiezen">
+      <img class="avatar avatar-preview"
+           id="avatar-preview"
+           src="{% if profile.avatar %}{{ url('avatar', args=[profile.user.id]) }}?v={{ profile.updated_at.timestamp()|int }}{% endif %}"
+           alt=""
+           {% if not profile.avatar %}hidden{% endif %}>
+      <span class="avatar-placeholder"
+            id="avatar-placeholder"
+            {% if profile.avatar %}hidden{% endif %}>+<br><small>Foto<br>toevoegen</small></span>
+    </label>
+    <input type="file" name="avatar" id="id_avatar" accept="image/*" style="display:none;">
+  </div>
+</form>
+
+{% if profile.avatar %}
+  <form method="post" action="{{ url('avatar-delete') }}" id="avatar-delete-form">
+    {{ get_csrf_hidden_input(request) | safe }}
+    <button type="submit"
+            onclick="return confirm('Weet je zeker dat je de foto wilt verwijderen?');"
+            style="background:none;border:0;color:#a90000;padding:0;margin:0.5rem 0 1.5rem;
+                   cursor:pointer;text-decoration:underline;display:block;">
+      Foto verwijderen
+    </button>
+  </form>
+{% endif %}
+
+<form method="post" id="profile-form">
+  {{ get_csrf_hidden_input(request) | safe }}
+
+  {% set field_order = ['first_name', 'last_name', 'functie', 'organisatie', 'telefoon'] %}
+  {% for field_name in field_order %}
+    {% set field = form[field_name] %}
+    <div class="field">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field | safe }}
+      {% if field.errors %}<p style="color:#a90000;">{{ field.errors | join(', ') }}</p>{% endif %}
+    </div>
+  {% endfor %}
+
+  <button type="submit" id="save-btn" disabled>Opslaan</button>
+</form>
+
+<style>
+  .avatar-block { display: inline-block; }
+  .avatar-trigger { cursor: pointer; display: inline-block; }
+  .avatar-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px dashed #888;
+    background: #f4f4f4;
+    color: #666;
+    font-size: 1.4rem;
+    text-align: center;
+    line-height: 1;
+  }
+  [hidden] { display: none !important; }
+  .avatar-placeholder small { font-size: 0.65rem; margin-top: 0.2rem; }
+</style>
+
+<script>
+  (function () {
+    // Avatar: auto-submit zodra een bestand is gekozen.
+    var fileInput = document.getElementById('id_avatar');
+    var avatarForm = document.getElementById('avatar-form');
+    fileInput.addEventListener('change', function () {
+      if (fileInput.files && fileInput.files.length > 0) {
+        avatarForm.submit();
+      }
+    });
+
+    // Tekstvelden: Opslaan-knop alleen actief bij wijzigingen.
+    var profileForm = document.getElementById('profile-form');
+    var saveBtn = document.getElementById('save-btn');
+    var textFields = Array.prototype.filter.call(
+      profileForm.querySelectorAll('input, textarea, select'),
+      function (el) { return el.type !== 'hidden' && el.type !== 'submit'; }
+    );
+
+    function checkDirty() {
+      var dirty = false;
+      for (var i = 0; i < textFields.length; i++) {
+        if (textFields[i].value !== textFields[i].defaultValue) {
+          dirty = true;
+          break;
+        }
+      }
+      saveBtn.disabled = !dirty;
+    }
+
+    textFields.forEach(function (el) {
+      el.addEventListener('input', checkDirty);
+      el.addEventListener('change', checkDirty);
+    });
+  })();
+</script>
+{% endblock %}

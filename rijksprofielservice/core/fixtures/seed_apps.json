@@ -1,0 +1,26 @@
+[
+  {
+    "model": "core.application",
+    "pk": 1,
+    "fields": {
+      "naam": "Mock Wies",
+      "client_id": "mock-wies",
+      "beschrijving": "Bemiddelingsplatform voor opdrachten en collega's.",
+      "requested_fields": ["naam", "email", "telefoon", "functie", "avatar"],
+      "is_approved": true,
+      "created_at": "2026-06-08T12:00:00Z"
+    }
+  },
+  {
+    "model": "core.application",
+    "pk": 2,
+    "fields": {
+      "naam": "Mock AMT",
+      "client_id": "mock-amt",
+      "beschrijving": "Account Management Tool voor toegangsbeheer.",
+      "requested_fields": ["naam", "email", "avatar"],
+      "is_approved": true,
+      "created_at": "2026-06-08T12:00:00Z"
+    }
+  }
+]

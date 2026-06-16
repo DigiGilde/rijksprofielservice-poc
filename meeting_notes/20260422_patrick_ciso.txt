@@ -1,0 +1,76 @@
+profielservice
+gesprek met Patrick
+22-04-2026
+
+
+doel van het gesprek:
+patrick onderkent het belang en de functie van een rijksprofielservice
+wat zijn mogelijke obstakels (AVG), wat kunnen we hiermee doen
+ 
+ingeleid met
+- verkennen van de profielservice
+
+verhaallijn
+- waarom moet het er zijn
+  - profielfoto's maken wies (en andere webapps) en stuk persoonlijker
+  - rijksadresgids niet te koppelen
+
+[tonen hoe wies eruit ziet met profielfoto's]
+
+
+voordelen:
+- als gebruiker: wil niet op verschillende plekken beheren
+- als developer/organisatie: profielfoto's zijn gevoelig en je wil dat deze zorgvuldig worden opgeslagen en afgehandeld
+
+-> in plaats van in alle applicaties apart 1x goed opgezet met goed systeem van goedkeuring en kunnen intrekken van de goedkeuring
+
+[demo]
+
+
+----------- notes
+
+Nav demo, verbeter ideeën:
+- gebruiker moet kunnen kiezen welke gegevens akkoord zijn/welke niet
+- voornaam, achternaam en email zitten al in SSO, misschien andere gegevens
+  - roepnaam?
+  - telefoonnummer
+  - functie
+  - aanhef?
+
+Patrick zoekt uit hoe SSC-ICT de grondslag voor de gegevens uit SSO heeft geregeld. Misschien goede basis voor onze grondslag
+
+- profielservice heeft privacy verklaring nodig
+  - rechten uit AVG: https://www.autoriteitpersoonsgegevens.nl/themas/basis-avg/privacyrechten-avg
+  - Patrick stuurt goed privacy verklaring voorbeeld
+- bijv export functie op je gegevens
+- let op uit-dienst treding: hoe ga je daarmee om?
+- waar wordt het gehost?
+
+belangrijk:
+als iemand niet toestemt moet het nog steeds werken
+- moet degene die gebruikt implementeren: aansluitvoorwaarden
+
+patrick kan dit laten zien in de CISO-raad
+
+vragen:
+- waar zetten we het uiteindelijk neer / wie doet beheer?
+  - SSC ICT? CIO-rijk?
+  - eerst voor Wies alleen opzetten lijkt een goede route
+
+business case
+- wat helpt is aangeven voor welke producten dit waardevol is (patrick noemde pleinbzk)
+
+nieuwe afspraak over maand, anderhalf
+- geavanceerder prototype bespreken
+
+
+
+TODO
+- privacy voorwaarden opstellen
+- voorbeeld verbeteren
+- uitwerken technische architectuur
+  - throughput
+  - oauth
+  - etc
+- evt zelfs voorbeeld implementatie in Wies?
+

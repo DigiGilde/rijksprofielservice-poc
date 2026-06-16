@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Rijksprofielservice{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+    nav { display: flex; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd; margin-bottom: 1.5rem; }
+    nav a { color: #154273; text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    h1 { font-size: 1.5rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; }
+    button, .btn { background: #154273; color: white; border: 0; padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 3px; }
+    button:disabled { background: #b0b8c4; cursor: not-allowed; }
+    button.danger { background: #a90000; }
+    .field { margin: 0.75rem 0; }
+    .field label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+    .field input, .field textarea { width: 100%; padding: 0.4rem; border: 1px solid #ccc; border-radius: 3px; }
+    img.avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="{{ url('profile-edit') }}">Mijn profiel</a>
+    <a href="{{ url('consent-list') }}">Toestemmingen</a>
+    <span style="margin-left:auto;">
+      {% if request.user.is_authenticated %}
+        {{ request.user.email }} · <a href="{{ url('logout') }}">Uitloggen</a>
+      {% else %}
+        <a href="{{ url('login') }}">Inloggen</a>
+      {% endif %}
+    </span>
+  </nav>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

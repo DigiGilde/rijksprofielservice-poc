@@ -1,0 +1,35 @@
+{% extends "core/base.html" %}
+{% block title %}Toestemmingen — Rijksprofielservice{% endblock %}
+{% block content %}
+<h1>Toestemmingen</h1>
+<p>Hieronder zie je welke applicaties op dit moment jouw profielgegevens mogen gebruiken.
+Toegang krijgen applicaties wanneer je daar bij eerste gebruik toestemming voor geeft;
+je kunt die toestemming hier op elk moment intrekken.</p>
+
+{% if consents %}
+<table>
+  <thead>
+    <tr><th>Applicatie</th><th>Velden</th><th>Actie</th></tr>
+  </thead>
+  <tbody>
+    {% for consent in consents %}
+      <tr>
+        <td>
+          <strong>{{ consent.application.naam }}</strong><br>
+          <small>{{ consent.application.beschrijving }}</small>
+        </td>
+        <td>{{ consent.application.requested_fields | join(', ') }}</td>
+        <td>
+          <form method="post" action="{{ url('consent-revoke', args=[consent.application.id]) }}">
+            {{ get_csrf_hidden_input(request) | safe }}
+            <button class="danger" type="submit">Intrekken</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Geen actieve toestemmingen — applicaties vragen toestemming bij eerste gebruik.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wies</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body class="app-wies">
+
+  <!-- Header -->
+  <div class="header">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#fff" fill-opacity=".2"/><path d="M8 12l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h1>Wies</h1>
+    <div class="spacer"></div>
+    <div class="user-info" id="headerUser"></div>
+    <div class="header-menu" id="headerMenu" style="display:none">
+      <div class="header-avatar" id="headerAvatar" onclick="document.getElementById('headerDropdown').classList.toggle('hidden')"></div>
+      <div class="header-dropdown hidden" id="headerDropdown">
+        <button class="header-dropdown-item" id="btnLogout">Uitloggen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 1: Login -->
+  <div id="viewLogin" class="center-page">
+    <h2>Welkom bij Wies</h2>
+    <p>Vind collega's, ontdek wie waar werkt, bekijk vacatures en deel kennis.</p>
+    <button class="btn btn-sso" id="btnLogin">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#fff" fill-opacity=".2"/><path d="M12 2L2 7v10l10 5 10-5V7L12 2z" stroke="#fff" stroke-width="1.5"/></svg>
+      Inloggen met Rijks-SSO
+    </button>
+  </div>
+
+  <!-- State 2: Onboarding modal (shown after login if no consent) -->
+  <div id="onboardingModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Welkom bij Wies!</h2>
+      <p>Om je profiel te tonen aan collega's, maakt Wies gebruik van gegevens uit de <strong>Rijksprofielservice</strong>.</p>
+      <p>Je wordt doorgestuurd om toestemming te geven. Je kunt dit later altijd wijzigen.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnSkip">Later</button>
+        <button class="btn btn-primary" id="btnConnect">Profiel koppelen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 3: App content (after consent) -->
+  <div id="viewApp" class="container hidden">
+    <!-- Profile banner -->
+    <div class="profile-banner" id="profileBanner" style="cursor:pointer">
+      <div id="profileAvatar"></div>
+      <div>
+        <div class="name" id="profileName"></div>
+        <div class="role" id="profileSubtitle"></div>
+      </div>
+    </div>
+
+    <!-- No-consent banner -->
+    <div id="noConsentBanner" class="profile-banner hidden" style="cursor:pointer" id="btnConnectLater">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--gray-200);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--gray-400);flex-shrink:0">?</div>
+      <div>
+        <div class="name" style="color:var(--gray-400)">Profiel niet gekoppeld</div>
+        <span style="color:var(--accent);font-size:13px">Koppel je Rijksprofiel</span>
+      </div>
+    </div>
+
+    <!-- Collega's bij jouw ministerie -->
+    <div class="card">
+      <h2>Collega's bij BZK</h2>
+      <div id="colleagueList"></div>
+    </div>
+
+    <!-- Vacatures -->
+    <div class="card">
+      <h2>Openstaande vacatures</h2>
+      <div style="padding:10px 0;border-bottom:1px solid var(--gray-100)">
+        <div style="font-weight:500">Senior Developer</div>
+        <div class="text-sm text-muted">Ministerie van BZK — Den Haag</div>
+      </div>
+      <div style="padding:10px 0;border-bottom:1px solid var(--gray-100)">
+        <div style="font-weight:500">Informatie-analist</div>
+        <div class="text-sm text-muted">Ministerie van JenV — Utrecht</div>
+      </div>
+      <div style="padding:10px 0">
+        <div style="font-weight:500">Product Owner Digitale Diensten</div>
+        <div class="text-sm text-muted">Ministerie van VWS — Den Haag</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Person detail modal -->
+  <div id="personModal" class="modal-overlay hidden">
+    <div class="modal">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <div id="personAvatar"></div>
+        <div>
+          <div style="font-size:18px;font-weight:600" id="personName"></div>
+          <div class="text-sm text-muted" id="personJobTitle"></div>
+        </div>
+      </div>
+      <div class="person-detail-row"><span class="person-detail-label">E-mailadres</span><span id="personEmail"></span></div>
+      <div class="person-detail-row"><span class="person-detail-label">Telefoonnummer</span><span id="personPhone"></span></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnClosePersonModal">Sluiten</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    const APP_ID = "wies";
+    const consented = getUrlParam("consented");
+
+    const COLLEAGUES = [
+      {
+        firstName: "Petra", lastName: "Bakker",
+        jobTitle: "Adviseur Digitale Zaken",
+        email: "p.bakker@minbzk.nl", phone: "06 23456789",
+        avatar: "https://i.pravatar.cc/120?img=32",
+      },
+      {
+        firstName: "Mark", lastName: "Jansen",
+        jobTitle: "Projectleider Open Source",
+        email: "m.jansen@minbzk.nl", phone: "06 34567890",
+      },
+      {
+        firstName: "Sophie", lastName: "de Groot",
+        jobTitle: "UX Designer",
+        email: "s.degroot@minbzk.nl", phone: "06 45678901",
+      },
+    ];
+
+    function init() {
+      // Clean up URL params
+      if (consented) clearUrlParams();
+
+      const loggedIn = sessionStorage.getItem("wies_loggedin");
+
+      if (!loggedIn) {
+        showView("login");
+        return;
+      }
+
+      showView("app");
+
+      if (!hasConsent(APP_ID) && !consented && !sessionStorage.getItem("wies_onboarded")) {
+        sessionStorage.setItem("wies_onboarded", "true");
+        showOnboarding();
+      }
+
+      renderProfile();
+      renderColleagues();
+    }
+
+    function showView(view) {
+      document.getElementById("viewLogin").classList.toggle("hidden", view !== "login");
+      document.getElementById("viewApp").classList.toggle("hidden", view !== "app");
+    }
+
+    function showOnboarding() {
+      document.getElementById("onboardingModal").classList.remove("hidden");
+    }
+
+    function renderProfile() {
+      const profile = getProfileForApp(APP_ID);
+      const menu = document.getElementById("headerMenu");
+      const avatar = document.getElementById("headerAvatar");
+      const headerUser = document.getElementById("headerUser");
+      headerUser.innerHTML = "";
+
+      // Always show header menu when logged in
+      const loggedIn = sessionStorage.getItem("wies_loggedin");
+      if (loggedIn) {
+        menu.style.display = "";
+        if (profile?.avatar) {
+          avatar.innerHTML = '<img src="' + profile.avatar + '" alt="">';
+        } else if (profile?.firstName) {
+          avatar.innerHTML = "";
+          avatar.textContent = getInitials(profile.firstName, profile.lastName);
+        } else {
+          avatar.innerHTML = "";
+          avatar.textContent = "?";
+        }
+      }
+
+      if (profile && hasConsent(APP_ID)) {
+        document.getElementById("profileBanner").classList.remove("hidden");
+        document.getElementById("noConsentBanner").classList.add("hidden");
+
+        const fullName = ((profile.firstName || "") + " " + (profile.lastName || "")).trim();
+        document.getElementById("profileName").textContent = fullName || "Medewerker Rijksoverheid";
+        document.getElementById("profileSubtitle").textContent = profile.jobTitle || "";
+        renderAvatar(document.getElementById("profileAvatar"), profile, 56);
+      } else {
+        document.getElementById("profileBanner").classList.add("hidden");
+        document.getElementById("noConsentBanner").classList.remove("hidden");
+      }
+    }
+
+    function renderColleagues() {
+      const list = document.getElementById("colleagueList");
+      list.innerHTML = "";
+      COLLEAGUES.forEach((person, i) => {
+        const row = document.createElement("div");
+        row.className = "colleague-row";
+        if (i < COLLEAGUES.length - 1) row.style.borderBottom = "1px solid var(--gray-100)";
+
+        const avatarEl = document.createElement("div");
+        renderAvatar(avatarEl, person, 40);
+        avatarEl.style.marginRight = "0";
+
+        const text = document.createElement("div");
+        const name = document.createElement("div");
+        name.style.fontWeight = "500";
+        name.textContent = (person.firstName + " " + person.lastName).trim();
+        const role = document.createElement("div");
+        role.className = "text-sm text-muted";
+        role.textContent = person.jobTitle || "";
+        text.append(name, role);
+
+        row.append(avatarEl, text);
+        row.addEventListener("click", () => showPersonModal(person));
+        list.appendChild(row);
+      });
+    }
+
+    function showPersonModal(person) {
+      renderAvatar(document.getElementById("personAvatar"), person, 64);
+      document.getElementById("personName").textContent = (person.firstName + " " + person.lastName).trim();
+      document.getElementById("personJobTitle").textContent = person.jobTitle || "";
+      document.getElementById("personEmail").textContent = person.email || "—";
+      document.getElementById("personPhone").textContent = person.phone || "—";
+      document.getElementById("personModal").classList.remove("hidden");
+    }
+
+    // --- Events ---
+    document.getElementById("btnLogin").addEventListener("click", () => {
+      const proceed = () => {
+        sessionStorage.setItem("wies_loggedin", "true");
+        sessionStorage.setItem("wies_onboarded", "true");
+        showView("app");
+        if (!hasConsent(APP_ID)) {
+          showOnboarding();
+        }
+        renderProfile();
+        renderColleagues();
+      };
+      if (!getSsoIdentity()) {
+        showSsoPicker((accountId) => {
+          setSsoIdentity(accountId);
+          proceed();
+        });
+      } else {
+        proceed();
+      }
+    });
+
+    document.getElementById("btnConnect").addEventListener("click", () => {
+      showTransition("Je wordt doorgestuurd naar Rijksprofielservice...", "index.html?from=" + APP_ID + "&callback=" + APP_ID + ".html");
+    });
+
+    document.getElementById("btnSkip").addEventListener("click", () => {
+      document.getElementById("onboardingModal").classList.add("hidden");
+      renderProfile();
+    });
+
+    document.getElementById("noConsentBanner").addEventListener("click", (e) => {
+      e.preventDefault();
+      showOnboarding();
+    });
+
+    document.getElementById("profileBanner").addEventListener("click", () => {
+      const profile = getProfileForApp(APP_ID);
+      if (profile) showPersonModal(profile);
+    });
+
+    document.getElementById("btnClosePersonModal").addEventListener("click", () => {
+      document.getElementById("personModal").classList.add("hidden");
+    });
+
+    document.getElementById("personModal").addEventListener("click", (e) => {
+      if (e.target.id === "personModal") {
+        document.getElementById("personModal").classList.add("hidden");
+      }
+    });
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      sessionStorage.removeItem("wies_loggedin");
+      sessionStorage.removeItem("wies_onboarded");
+      window.location.reload();
+    });
+
+    document.addEventListener("click", (e) => {
+      const menu = document.getElementById("headerMenu");
+      if (!menu.contains(e.target)) {
+        document.getElementById("headerDropdown").classList.add("hidden");
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>

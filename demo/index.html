@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rijksprofielservice</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body class="app-rps">
+
+  <!-- Header -->
+  <div class="header">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 20c0-3.3 2.7-6 6-6h4c3.3 0 6 2.7 6 6" fill="#fff"/></svg>
+    <h1>Rijksprofielservice</h1>
+    <div class="spacer"></div>
+    <div class="user-info" id="headerUser"></div>
+    <div class="header-menu">
+      <div class="header-avatar" id="headerAvatar" onclick="document.getElementById('headerDropdown').classList.toggle('hidden')"></div>
+      <div class="header-dropdown hidden" id="headerDropdown">
+        <button class="header-dropdown-item" id="btnLogout">Uitloggen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login page -->
+  <div id="viewLogin" class="center-page">
+    <h2>Rijksprofielservice</h2>
+    <p>Beheer je profiel en bepaal welke applicaties toegang hebben tot je gegevens.</p>
+    <button class="btn btn-sso" id="btnLogin">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#fff" fill-opacity=".2"/><path d="M12 2L2 7v10l10 5 10-5V7L12 2z" stroke="#fff" stroke-width="1.5"/></svg>
+      Inloggen met Rijks-SSO
+    </button>
+  </div>
+
+  <!-- App content (hidden until logged in) -->
+  <div id="viewApp" class="hidden">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <a class="tab" id="tabProfile" href="index.html">Profiel</a>
+    <a class="tab" id="tabSettings" href="index.html?tab=settings">Instellingen</a>
+  </div>
+
+  <!-- Profile tab -->
+  <div id="viewProfile" class="container">
+    <div class="card sso-card">
+      <div class="sso-card-header">
+        <span class="sso-badge">Vanuit Rijks-SSO</span>
+        <span class="sso-card-hint">Deze gegevens worden centraal beheerd en zijn hier niet aanpasbaar.</span>
+      </div>
+      <div class="form-group">
+        <label>Voornaam</label>
+        <div class="readonly-field" id="ssoFirstName"></div>
+      </div>
+      <div class="form-group">
+        <label>Achternaam</label>
+        <div class="readonly-field" id="ssoLastName"></div>
+      </div>
+      <div class="form-group">
+        <label>E-mailadres</label>
+        <div class="readonly-field" id="ssoEmail"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Je profiel</h2>
+      <p class="text-sm text-muted mb-16">Deze gegevens beheer je hier en deel je met applicaties die je toestemming geeft.</p>
+
+      <div class="avatar-upload">
+        <div class="avatar-preview" id="avatarPreview" title="Klik om foto te uploaden"></div>
+        <span class="avatar-hint">Klik om een profielfoto te uploaden</span>
+        <a href="#" id="btnClearAvatar" class="avatar-hint hidden" style="color:var(--red);cursor:pointer">Foto verwijderen</a>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none">
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Telefoonnummer</label>
+        <input type="tel" id="phone" placeholder="Bijv. 06 12345678">
+      </div>
+      <div class="form-group">
+        <label for="jobTitle">Functie</label>
+        <input type="text" id="jobTitle" placeholder="Bijv. Beleidsmedewerker">
+      </div>
+
+      <button class="btn btn-primary btn-block mt-16" id="btnSave">Opslaan</button>
+    </div>
+  </div>
+
+  <!-- Settings tab -->
+  <div id="viewSettings" class="container hidden">
+    <div class="card">
+      <h2>Apps met toegang tot je profiel</h2>
+      <p class="text-sm text-muted mb-16">Hieronder zie je welke applicaties toegang hebben tot jouw profielgegevens. Je kunt de toegang per app intrekken.</p>
+      <div id="appList"></div>
+      <div id="emptyApps" class="empty-state hidden">
+        <p>Geen enkele app heeft op dit moment toegang tot je profiel.</p>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /viewApp -->
+
+  <!-- Consent modal (shown when redirected from an app) -->
+  <div id="consentModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="consentTitle"></h2>
+      <p id="consentDesc"></p>
+      <ul class="field-list" id="consentFields"></ul>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnDeny">Weigeren</button>
+        <button class="btn btn-primary" id="btnAllow">Toestaan</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    // --- State ---
+    const fromApp = getUrlParam("from");
+    const callback = getUrlParam("callback");
+    const activeTab = getUrlParam("tab") || "profile";
+
+    // --- Init ---
+    function init() {
+      const sso = getSsoIdentity();
+
+      if (!sso) {
+        document.getElementById("viewLogin").classList.remove("hidden");
+        document.getElementById("viewApp").classList.add("hidden");
+        document.querySelector(".header-menu").style.display = "none";
+        if (fromApp) {
+          showSsoPicker((accountId) => {
+            setSsoIdentity(accountId);
+            window.location.reload();
+          });
+        }
+        return;
+      }
+
+      document.getElementById("viewLogin").classList.add("hidden");
+      document.getElementById("viewApp").classList.remove("hidden");
+      document.querySelector(".header-menu").style.display = "";
+      setupTabs();
+      loadProfile();
+      if (fromApp && APP_CONFIG[fromApp]) {
+        showConsentModal();
+      }
+    }
+
+    // --- Tabs ---
+    function setupTabs() {
+      if (activeTab === "settings") {
+        document.getElementById("viewProfile").classList.add("hidden");
+        document.getElementById("viewSettings").classList.remove("hidden");
+        document.getElementById("tabSettings").classList.add("active");
+        renderSettings();
+      } else {
+        document.getElementById("tabProfile").classList.add("active");
+      }
+    }
+
+    // --- Profile ---
+    function loadProfile() {
+      const sso = getSsoIdentity() || {};
+      const profile = getProfile() || {};
+      document.getElementById("ssoFirstName").textContent = sso.firstName || "";
+      document.getElementById("ssoLastName").textContent = sso.lastName || "";
+      document.getElementById("ssoEmail").textContent = sso.email || "";
+      document.getElementById("phone").value = profile.phone || "";
+      document.getElementById("jobTitle").value = profile.jobTitle || "";
+      const fullProfile = { ...sso, ...profile };
+      updateAvatarPreview(fullProfile);
+      updateHeaderUser(fullProfile);
+    }
+
+    function updateAvatarPreview(profile) {
+      const el = document.getElementById("avatarPreview");
+      const clearBtn = document.getElementById("btnClearAvatar");
+      if (profile?.avatar) {
+        el.innerHTML = '<img src="' + profile.avatar + '" alt="avatar">';
+        clearBtn.classList.remove("hidden");
+      } else {
+        el.innerHTML = "";
+        el.textContent = getInitials(profile?.firstName, profile?.lastName) || "+";
+        clearBtn.classList.add("hidden");
+      }
+    }
+
+    function updateHeaderUser(profile) {
+      const el = document.getElementById("headerUser");
+      el.innerHTML = "";
+      const avatar = document.getElementById("headerAvatar");
+      if (profile?.avatar) {
+        avatar.innerHTML = '<img src="' + profile.avatar + '" alt="">';
+      } else if (profile?.firstName) {
+        avatar.innerHTML = "";
+        avatar.textContent = getInitials(profile.firstName, profile.lastName);
+      } else {
+        avatar.innerHTML = "";
+        avatar.textContent = "?";
+      }
+    }
+
+    // Avatar upload
+    document.getElementById("avatarPreview").addEventListener("click", () => {
+      document.getElementById("avatarInput").click();
+    });
+
+    document.getElementById("btnClearAvatar").addEventListener("click", (e) => {
+      e.preventDefault();
+      const profile = getProfile() || {};
+      delete profile.avatar;
+      setProfile(profile);
+      const full = { ...getSsoIdentity(), ...profile };
+      updateAvatarPreview(full);
+      updateHeaderUser(full);
+    });
+
+    document.getElementById("avatarInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const dataUrl = await resizeImage(file);
+      const profile = getProfile() || {};
+      profile.avatar = dataUrl;
+      setProfile(profile);
+      const full = { ...getSsoIdentity(), ...profile };
+      updateAvatarPreview(full);
+      updateHeaderUser(full);
+    });
+
+    // Save
+    document.getElementById("btnSave").addEventListener("click", () => {
+      const profile = getProfile() || {};
+      profile.phone = document.getElementById("phone").value.trim();
+      profile.jobTitle = document.getElementById("jobTitle").value.trim();
+      setProfile(profile);
+      updateHeaderUser({ ...getSsoIdentity(), ...profile });
+      showToast("Profiel opgeslagen");
+    });
+
+    // --- Consent Modal ---
+    function showConsentModal() {
+      const app = APP_CONFIG[fromApp];
+      document.getElementById("consentTitle").textContent = app.name + " wil toegang tot je profiel";
+      document.getElementById("consentDesc").textContent = app.description;
+
+      const fieldList = document.getElementById("consentFields");
+      fieldList.innerHTML = "";
+      for (const field of app.requestedFields) {
+        const li = document.createElement("li");
+        li.textContent = FIELD_LABELS[field] || field;
+        fieldList.appendChild(li);
+      }
+
+      document.getElementById("consentModal").classList.remove("hidden");
+    }
+
+    document.getElementById("btnAllow").addEventListener("click", () => {
+      const app = APP_CONFIG[fromApp];
+      grantConsent(fromApp, app.requestedFields);
+      document.getElementById("consentModal").classList.add("hidden");
+      if (callback) {
+        showTransition("Je wordt teruggestuurd naar " + app.name + "...", callback + "?consented=true");
+      }
+    });
+
+    document.getElementById("btnDeny").addEventListener("click", () => {
+      const app = APP_CONFIG[fromApp];
+      document.getElementById("consentModal").classList.add("hidden");
+      if (callback) {
+        showTransition("Je wordt teruggestuurd naar " + (app?.name || "de app") + "...", callback);
+      }
+    });
+
+    // --- Settings ---
+    function renderSettings() {
+      const consents = getConsents();
+      const appList = document.getElementById("appList");
+      const emptyEl = document.getElementById("emptyApps");
+      appList.innerHTML = "";
+
+      const appIds = Object.keys(consents).filter(id => consents[id].granted);
+
+      if (appIds.length === 0) {
+        emptyEl.classList.remove("hidden");
+        return;
+      }
+      emptyEl.classList.add("hidden");
+
+      for (const appId of appIds) {
+        const consent = consents[appId];
+        const config = APP_CONFIG[appId];
+        if (!config) continue;
+
+        const card = document.createElement("div");
+        card.className = "app-card";
+
+        const icon = document.createElement("div");
+        icon.className = "app-icon";
+        icon.style.background = config.color;
+        icon.textContent = config.name[0];
+
+        const body = document.createElement("div");
+        body.className = "app-card-body";
+
+        const h3 = document.createElement("h3");
+        h3.textContent = config.name;
+
+        const date = document.createElement("div");
+        date.className = "date";
+        date.textContent = "Toegang verleend op " + new Date(consent.grantedAt).toLocaleDateString("nl-NL");
+
+        const badges = document.createElement("div");
+        badges.className = "app-card-badges";
+        for (const field of consent.fields) {
+          const badge = document.createElement("span");
+          badge.className = "badge";
+          badge.textContent = FIELD_LABELS[field] || field;
+          badges.appendChild(badge);
+        }
+
+        const revokeBtn = document.createElement("button");
+        revokeBtn.className = "btn btn-danger";
+        revokeBtn.textContent = "Toegang intrekken";
+        revokeBtn.addEventListener("click", () => {
+          revokeConsent(appId);
+          renderSettings();
+          showToast("Toegang voor " + config.name + " ingetrokken");
+        });
+
+        body.append(h3, date, badges, revokeBtn);
+        card.append(icon, body);
+        appList.appendChild(card);
+      }
+    }
+
+    // --- Toast ---
+    function showToast(msg) {
+      const existing = document.querySelector(".toast");
+      if (existing) existing.remove();
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    }
+
+    document.getElementById("btnLogin").addEventListener("click", () => {
+      showSsoPicker((accountId) => {
+        setSsoIdentity(accountId);
+        window.location.reload();
+      });
+    });
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      clearSsoIdentity();
+      window.location.href = "index.html";
+    });
+
+    document.addEventListener("click", (e) => {
+      const menu = document.querySelector(".header-menu");
+      if (!menu.contains(e.target)) {
+        document.getElementById("headerDropdown").classList.add("hidden");
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
