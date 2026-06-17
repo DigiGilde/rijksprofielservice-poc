@@ -42,16 +42,11 @@ format:
   uv run ruff check --fix .
   uv run ruff format .
 
-# Keycloak: print URLs van admin console en profielservice realm
-keycloak-info:
-  @echo "Admin console:  http://localhost:8081/admin  (admin/admin)"
-  @echo "Realm:          http://localhost:8081/realms/profielservice"
-  @echo "Token endpoint: http://localhost:8081/realms/profielservice/protocol/openid-connect/token"
-
-# Haal een client-credentials access_token uit de profielservice realm
-keycloak-token client_id="mock-wies" client_secret="local-dev-secret-wies":
-  @curl -s -X POST http://localhost:8081/realms/profielservice/protocol/openid-connect/token \
+# Haal een client-credentials access_token van de profielservice OAuth-server
+m2m-token client_id="mock-wies-m2m" client_secret="local-dev-secret-wies":
+  @curl -s -X POST http://localhost:8000/o/token/ \
     -d grant_type=client_credentials \
+    -d scope=read_profile \
     -d client_id={{client_id}} \
     -d client_secret={{client_secret}} | jq -r .access_token
 

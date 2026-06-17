@@ -1,6 +1,9 @@
 import json
+from datetime import timedelta
 
 import pytest
+from django.utils import timezone
+from oauth2_provider.models import AccessToken
 
 pytestmark = pytest.mark.django_db
 
@@ -14,7 +17,7 @@ def test_batch_returns_consented_profile(client, alice, mock_wies, alice_consent
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {wies_token}",
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.content
     profile = response.json()["profiles"]["sub-alice"]
     assert profile["naam"] == "Alice Aap"
     assert profile["email"] == "alice@minbzk.nl"
@@ -100,39 +103,35 @@ def test_api_returns_401_without_token(client, mock_wies):
     assert response.status_code == 401
 
 
-def test_api_returns_401_for_expired_token(client, alice, mock_wies, alice_consents_wies, mint_token):
-    expired = mint_token(exp_offset=-60)
+def test_api_returns_401_for_expired_token(client, alice, mock_wies, mock_wies_m2m_dot_app, alice_consents_wies):
+    expired = AccessToken.objects.create(
+        application=mock_wies_m2m_dot_app,
+        token="expired-token",
+        expires=timezone.now() - timedelta(seconds=60),
+        scope="read_profile",
+    )
     response = client.get(
         "/api/v1/profiles/sub-alice",
-        HTTP_AUTHORIZATION=f"Bearer {expired}",
+        HTTP_AUTHORIZATION=f"Bearer {expired.token}",
     )
     assert response.status_code == 401
 
 
-def test_api_returns_401_for_unapproved_app(client, alice, mock_wies, alice_consents_wies, mint_token):
+def test_api_returns_403_for_unapproved_app(client, alice, mock_wies, alice_consents_wies, wies_token):
+    """Niet-goedgekeurde app: token blijft geldig, maar business-laag weigert."""
     mock_wies.is_approved = False
     mock_wies.save()
-    token = mint_token(client_id="mock-wies")
     response = client.get(
         "/api/v1/profiles/sub-alice",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
+        HTTP_AUTHORIZATION=f"Bearer {wies_token}",
     )
-    assert response.status_code == 401
-
-
-def test_api_returns_401_for_unknown_client(client, alice, mock_wies, alice_consents_wies, mint_token):
-    token = mint_token(client_id="onbekend")
-    response = client.get(
-        "/api/v1/profiles/sub-alice",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
-    )
-    assert response.status_code == 401
+    assert response.status_code == 403
 
 
 def test_api_returns_401_for_malformed_token(client, mock_wies):
     response = client.get(
         "/api/v1/profiles/sub-alice",
-        HTTP_AUTHORIZATION="Bearer notajwt",
+        HTTP_AUTHORIZATION="Bearer notatoken",
     )
     assert response.status_code == 401
 
@@ -159,3 +158,43 @@ def test_api_request_is_logged(client, alice, mock_wies, alice_consents_wies, wi
     log = APIRequest.objects.get()
     assert log.application == mock_wies
     assert log.subject_ids == ["sub-alice", "sub-bob"]
+
+
+# -------------------------- user-bound token (Authorization Code) --------------------------
+
+
+def test_me_endpoint_returns_profile_for_user_bound_token(client, alice, mock_wies, mock_wies_dot_app):
+    token = AccessToken.objects.create(
+        user=alice,
+        application=mock_wies_dot_app,
+        token="alice-user-token",
+        expires=timezone.now() + timedelta(hours=1),
+        scope="read_profile",
+    )
+    response = client.get("/api/v1/profiles/me", HTTP_AUTHORIZATION=f"Bearer {token.token}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["naam"] == "Alice Aap"
+    assert "organisatie" not in body  # niet in requested_fields voor mock-wies
+
+
+def test_me_endpoint_rejects_client_credentials_token(client, mock_wies, wies_token):
+    response = client.get("/api/v1/profiles/me", HTTP_AUTHORIZATION=f"Bearer {wies_token}")
+    assert response.status_code == 403
+
+
+def test_batch_endpoint_rejects_user_bound_token(client, alice, mock_wies, mock_wies_dot_app):
+    token = AccessToken.objects.create(
+        user=alice,
+        application=mock_wies_dot_app,
+        token="alice-user-token-2",
+        expires=timezone.now() + timedelta(hours=1),
+        scope="read_profile",
+    )
+    response = client.post(
+        "/api/v1/profiles/batch",
+        data=json.dumps({"subject_ids": ["sub-alice"]}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {token.token}",
+    )
+    assert response.status_code == 403

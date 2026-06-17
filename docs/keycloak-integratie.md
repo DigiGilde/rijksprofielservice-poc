@@ -1,5 +1,7 @@
 # Keycloak-integratie — Technisch Detail
 
+> **Status (sinds PoC2):** Dit document beschreef de architectuur waarbij Keycloak ook M2M-tokens uitgaf via een eigen `profielservice`-realm. **De profielservice geeft sinds PoC2 zelf de tokens uit** via `django-oauth-toolkit` (zowel Authorization Code + PKCE als Client Credentials). Zie [main.md](main.md) voor de huidige architectuur. Keycloak speelt nog steeds één rol: SSO Rijk broker voor **ambtenaar-login** (rijksauth → externe Wies-dev realm). De secties over de profielservice-realm hieronder zijn behouden als historische referentie — handig als M2M-credentials in de toekomst alsnog via een centrale broker zouden moeten lopen.
+
 ## Architectuur: SSO Rijk, Keycloak en de profielservice
 
 Keycloak fungeert als broker tussen SSO Rijk (de centrale identity provider van het Rijk) en de individuele applicaties. Via Keycloak wordt een enkele SSO Rijk-aansluiting gedeeld over meerdere apps. De apps praten met Keycloak, niet rechtstreeks met SSO Rijk.
@@ -31,7 +33,9 @@ Hier loggen ambtenaren in. Apps zijn geregistreerd als OIDC clients met de stand
 
 Dit is het bestaande SSO-mechanisme en wordt niet verder beschreven in dit document.
 
-### Profielservice realm (app-authenticatie)
+### Profielservice realm (app-authenticatie) — niet langer in gebruik
+
+> **Sinds PoC2 niet meer gebruikt.** De profielservice geeft zelf de M2M-tokens uit via `django-oauth-toolkit` (`POST /o/token/` met `grant_type=client_credentials`). De rest van deze sectie blijft staan als referentie voor wanneer M2M-credentials alsnog via een centrale Keycloak-broker zouden moeten lopen.
 
 Een aparte realm specifiek voor de profielservice API. Afnemer-apps registreren zich hier als client om via **client-credentials** tokens op te halen waarmee ze de profielservice API kunnen aanroepen.
 

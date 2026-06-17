@@ -5,9 +5,10 @@ from .models import APIRequest, Application, Consent, UserProfile
 
 @admin.register(Application)
 class ApplicationAdmin(admin.ModelAdmin):
-    list_display = ("naam", "client_id", "is_approved", "created_at")
+    list_display = ("naam", "client_id", "oauth_app", "is_approved", "created_at")
     list_filter = ("is_approved",)
     search_fields = ("naam", "client_id")
+    raw_id_fields = ("oauth_app",)
     actions = ["approve_apps"]
 
     @admin.action(description="Goedkeuren")

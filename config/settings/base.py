@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.admin",
     "rest_framework",
+    "oauth2_provider",
     "rijksprofielservice.rijksauth",
     "rijksprofielservice.core",
 ]
@@ -113,24 +114,37 @@ OIDC_ID_TOKEN_SESSION_KEY = "oidc_id_token"  # noqa: S105 — session key, niet 
 OIDC_SUBJECT_SESSION_KEY = "oidc_subject"  # noqa: S105 — session key, niet een secret
 OIDC_POST_LOGOUT_COOKIE_NAME = "rijksprofielservice_post_logout"
 
-# Profielservice realm (M2M client-credentials) — gebruikt door REST API.
-PROFIELSERVICE_JWT_ISSUER = os.environ.get("PROFIELSERVICE_JWT_ISSUER", "")
-PROFIELSERVICE_JWT_AUDIENCE = os.environ.get("PROFIELSERVICE_JWT_AUDIENCE", "profielservice")
-# Lokale RS256 test-keypair accepteren (alleen voor demo/dev zonder echte Keycloak-roundtrip).
-# Tokens met kid="test-kid" worden dan geverifieerd met config/test_keys/jwt_test_pub.pem.
-# MAG NIET op true in productie staan.
-PROFIELSERVICE_JWT_ALLOW_TEST_KEY = os.environ.get("PROFIELSERVICE_JWT_ALLOW_TEST_KEY", "").lower() == "true"
-PROFIELSERVICE_JWT_TEST_PUBLIC_KEY_PATH = BASE_DIR / "config" / "test_keys" / "jwt_test_pub.pem"
-PROFIELSERVICE_JWT_TEST_PRIVATE_KEY_PATH = BASE_DIR / "config" / "test_keys" / "jwt_test_priv.pem"
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rijksprofielservice.core.api.auth.ClientCredentialsJWTAuthentication",
+        "oauth2_provider.contrib.rest_framework.OAuth2Authentication",
     ],
+    # TokenHasScope ipv IsAuthenticated: client-credentials tokens hebben `user=None`,
+    # die zou IsAuthenticated weigeren. TokenHasScope checkt expiry + scope op token.
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "oauth2_provider.contrib.rest_framework.TokenHasScope",
     ],
     "UNAUTHENTICATED_USER": None,
+}
+
+# Mock consuming-app client_secrets — alleen voor de demo-landings (server-side
+# token-exchange en M2M-grants). Productie-clients hebben hun eigen secret-storage.
+MOCK_CLIENT_SECRETS = {
+    "mock-wies": "local-dev-secret-wies",
+    "mock-wies-m2m": "local-dev-secret-wies",
+    "mock-amt": "local-dev-secret-amt",
+    "mock-amt-m2m": "local-dev-secret-amt",
+}
+
+# OAuth Authorization Server (django-oauth-toolkit). Profielservice is zelf de AS;
+# één scope ('read_profile') — field-filtering blijft in fields_for_app_and_user.
+# `http` toegestaan voor localhost demo; productie zet dit naar `["https"]`.
+OAUTH2_PROVIDER = {
+    "SCOPES": {"read_profile": "Lees profielgegevens (gefilterd op consent)"},
+    "DEFAULT_SCOPES": ["read_profile"],
+    "PKCE_REQUIRED": True,
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 3600,
+    "AUTHORIZATION_CODE_EXPIRE_SECONDS": 300,
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["http", "https"],
 }

@@ -47,26 +47,43 @@ FIELD_CHOICES = [
 
 
 class Application(models.Model):
-    """Een consuming app die toegang vraagt tot profielgegevens."""
+    """Een consuming app die toegang vraagt tot profielgegevens.
+
+    Domeinmodel: source of truth voor `requested_fields`, `is_approved`, beschrijving.
+    OAuth-protocolvelden (client_secret, redirect_uris, grant_type) leven op het
+    gekoppelde `oauth2_provider.Application`. Voor consuming apps is er één
+    Authorization Code client (FK `oauth_app`) en een tweede Client Credentials
+    client met client_id `<client_id>-m2m` (los record, gelookupt in de M2M-flow).
+    """
 
     naam = models.CharField(max_length=128, unique=True)
-    # client_id uit de profielservice Keycloak realm; matcht JWT `azp` claim.
+    # client_id van de Authorization Code OAuth-client; matcht oauth_app.client_id.
     client_id = models.CharField(max_length=128, unique=True)
     beschrijving = models.TextField(blank=True)
     # Lijst van veldnamen uit FIELD_CHOICES.
     requested_fields = models.JSONField(default=list)
-    # Whitelist van toegestane redirect_uri's voor de OAuth-style consent flow.
-    # Exacte match (geen wildcards) om open-redirect te voorkomen.
-    redirect_uris = models.JSONField(default=list)
     is_approved = models.BooleanField(default=False)
+    # OAuth Authorization Code client (django-oauth-toolkit). Nullable zodat
+    # bestaande records vóór migratie 0003 niet breken.
+    oauth_app = models.OneToOneField(
+        "oauth2_provider.Application",
+        on_delete=models.PROTECT,
+        related_name="profielservice_app",
+        null=True,
+        blank=True,
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.naam
 
-    def is_valid_redirect_uri(self, candidate: str) -> bool:
-        return candidate in (self.redirect_uris or [])
+    def save(self, *args, **kwargs):
+        # Hou client_id gesynchroniseerd met de OAuth-client zodat lookups
+        # (signal, admin, fixtures) één bron hebben.
+        if self.oauth_app_id and self.oauth_app.client_id and self.client_id != self.oauth_app.client_id:
+            self.client_id = self.oauth_app.client_id
+        super().save(*args, **kwargs)
 
 
 class Consent(models.Model):

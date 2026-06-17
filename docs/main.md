@@ -16,7 +16,7 @@ Inspiratie komt van [MOZA profielservice](https://github.com/MinBZK/moza-profiel
 | Identiteit | Via Rijks-SSO (subject-ID) |
 | Relatie Rijks-SSO | Aanvulling — profielservice verrijkt SSO met extra gegevens |
 | Afnemer-voorwaarde | Alleen apps die Rijks-SSO gebruiken kunnen aansluiten |
-| Auth app → service | OAuth2 client-credentials via Keycloak + SSO subject-ID |
+| Auth app → service | OAuth2 (Authorization Code + Client Credentials) via profielservice zelf (django-oauth-toolkit) + SSO subject-ID |
 | Toestemmingsmodel | Opt-in, per app toestemming |
 | Collega-profielen | Ja, essentieel |
 | Avatar/profielfoto | Vanaf het begin meenemen, DPIA direct oppakken |
@@ -120,14 +120,17 @@ De strategie voor performance en versheid is een gelaagd model:
 
 **Waarom dit werkt**: profielen veranderen zelden, dus een cache van 5 minuten is ruim voldoende. De app slaat zelf geen profieldata op (GDPR-voordeel), alles zit in de HTTP-cache van de browser of een tussenliggende proxy.
 
-### Twee authenticatie-flows
+### Drie authenticatie-flows
 
-| Flow | Grant type | Wie authenticeert | Waarvoor |
-|---|---|---|---|
-| App haalt profielen op | Client-credentials | De app (bijv. Wies) | Collega-profielen lezen |
-| Ambtenaar beheert profiel | Authorization-code (SSO) | De ambtenaar | Eigen profiel bewerken, toestemmingen beheren |
+| Flow | Grant type | Wie authenticeert | Tokens van | Waarvoor |
+|---|---|---|---|---|
+| App haalt collega-profielen op | Client-credentials | De app (bijv. Wies) | profielservice | Batch-API `/api/v1/profiles/batch`, `/{subject-id}` |
+| App handelt namens ambtenaar | Authorization-code + PKCE | De app + ambtenaar | profielservice | Eigen profiel via `/api/v1/profiles/me` |
+| Ambtenaar beheert profiel | Authorization-code (SSO) | De ambtenaar | Keycloak (SSO Rijk) | Eigen profiel bewerken, toestemmingen beheren |
 
 Bij client-credentials authenticatie is er **één token per app**, niet per gebruiker. De toestemming is gekoppeld aan de app: als ambtenaar B toestemming heeft gegeven aan Wies, dan mag *elke gebruiker van Wies* het profiel van B zien — dat is het hele punt van collega-profielen.
+
+Bij de Authorization Code + PKCE flow is het token aan een specifieke ambtenaar gekoppeld. Hier valt **consent = grant** samen: het bestaan van een geldig AccessToken voor (gebruiker, app) is op zichzelf bewijs dat toestemming is verleend.
 
 Zie [Integratie-patronen](integratie-patronen.md) voor concrete voorbeelden van hoe afnemer-apps (zoals Django + HTMX) de profielservice integreren.
 
@@ -147,39 +150,54 @@ Alleen apps die Rijks-SSO gebruiken kunnen aansluiten op de profielservice. Dit 
 
 Sommige apps ondersteunen meerdere login-methoden (bijv. AMT ondersteunt ook GitHub-login). Elke ambtenaar *heeft* een Rijks-account en kan via SSO inloggen. Een app die meerdere login-methoden aanbiedt kan bij de eerste SSO-login het subject-ID koppelen aan het app-account, zodat het profiel ook beschikbaar is bij latere logins via andere methoden. Dit is een implementatiekeuze van de afnemer-app.
 
-### Keycloak-architectuur
+### Architectuur
 
-Keycloak fungeert als **broker** tussen SSO Rijk en de applicaties. Eén SSO Rijk-aansluiting wordt via Keycloak gedeeld over meerdere apps. Er zijn twee realms:
+Twee verantwoordelijkheden, twee servers:
 
-- **SSO Rijk realm** — voor gebruikerslogin (ambtenaren loggen hier in, apps krijgen het subject-ID)
-- **Profielservice realm** — voor app-authenticatie (afnemer-apps halen hier tokens op via client-credentials om de API te callen)
+- **Keycloak (extern, SSO Rijk realm)** — gebruikerslogin voor ambtenaren. Apps en de profielservice consumeren dit via OIDC.
+- **Profielservice OAuth-server (django-oauth-toolkit, intern)** — Authorization Server voor app-toegang tot profielgegevens. Geeft zowel Authorization Code (+ PKCE) tokens uit voor user-flows als Client Credentials tokens voor M2M-flows.
 
 ```
 SSO Rijk (centrale identity provider)
     │
     └── Keycloak (broker, eigen beheer)
-            ├── SSO Rijk realm → gebruikerslogin voor apps
-            └── Profielservice realm → app-authenticatie voor API
-                    ├── Wies (client)
-                    ├── AMT (client)
-                    └── ...
+            └── SSO Rijk realm → gebruikerslogin voor apps en profielservice
+
+Profielservice (Django + django-oauth-toolkit)
+    │
+    ├── /o/authorize/   ── Authorization Code + PKCE (consent-scherm)
+    ├── /o/token/       ── code/token exchange + client_credentials
+    └── /o/revoke_token/
 ```
 
 ### Authenticatie: app → profielservice
 
-1. Ambtenaar logt in bij de app via SSO Rijk realm → app kent het subject-ID
-2. App vraagt token aan bij profielservice realm (client-credentials grant)
-3. App stuurt token + subject-ID naar de profielservice
-4. Profielservice valideert token, checkt toestemming, retourneert profielgegevens
+**Client-credentials (M2M, batch-API):**
+1. App vraagt token aan bij profielservice `/o/token/` (grant_type=client_credentials)
+2. App stuurt token + subject-ID naar `/api/v1/profiles/{subject-id}` of `/batch`
+3. Profielservice valideert token (DOT), checkt `Consent`, retourneert gefilterde gegevens
+
+**Authorization Code + PKCE (user-bound):**
+1. Ambtenaar is ingelogd bij de app via SSO Rijk realm
+2. App stuurt user naar `/o/authorize/` met `code_challenge`, redirect_uri, state
+3. Profielservice toont consent-scherm; bij grant → redirect met `?code=...`
+4. App ruilt code in bij `/o/token/` (met code_verifier en client_secret)
+5. App roept `/api/v1/profiles/me` aan met het AccessToken → eigen profiel van de ambtenaar
+6. Het AccessToken zelf is bewijs van consent (geen aparte DB-check nodig)
 
 ### Aansluiting nieuwe afnemer-apps
 
 Profielservice-admins (beheerd via `STAFF_EMAILS`, zoals bij Wies) beslissen welke apps mogen aansluiten. Een nieuwe app aansluiten vereist:
 
-1. Client aanmaken in de profielservice Keycloak realm
-2. Goedkeuring door een profielservice-admin
+1. Twee DOT-Applications aanmaken in Django admin: één voor Authorization Code (`<naam>`), één voor Client Credentials (`<naam>-m2m`)
+2. Bijbehorende business-`Application` aanmaken en koppelen via `oauth_app`
+3. Goedkeuring door een profielservice-admin (`is_approved=true`)
 
-Zie [Keycloak-integratie](keycloak-integratie.md) voor de volledige technische configuratie.
+### Waarom geen Keycloak voor app-authenticatie
+
+Een alternatief was Keycloak ook de Authorization Server voor consuming apps laten zijn. Doorslaggevend argument tegen: **consent past niet natuurlijk in Keycloak**. In ons model is consent de autorisatiebeslissing — het AccessToken is daar precies het juiste bewijs van. Bij Keycloak-tokens (~5 min lifetime) zou "consent intrekken werkt direct" een DB-check per request betekenen, wat de winst van stateless tokens neutraliseert. Met django-oauth-toolkit valt consent samen met grant: revoke = AccessToken verwijderen, direct effect.
+
+Zie [Keycloak-integratie](keycloak-integratie.md) voor historische context van de oorspronkelijke architectuur (Keycloak als M2M-broker).
 
 ## Eerste afnemers
 

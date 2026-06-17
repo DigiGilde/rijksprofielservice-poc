@@ -13,6 +13,7 @@ dependencies = [
   "psycopg[binary]>=3.3.4",
   "djangorestframework>=3.16",
   "Pillow>=11.1",
+  "django-oauth-toolkit>=3.0",
 ]
 
 [dependency-groups]
@@ -42,7 +43,7 @@ ignore = ["RUF012"]
 known-first-party = ["rijksprofielservice", "config"]
 
 [tool.ruff.lint.per-file-ignores]
-"*/migrations/*" = ["E501"]
+"*/migrations/*" = ["E501", "N806"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"

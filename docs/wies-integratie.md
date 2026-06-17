@@ -2,6 +2,16 @@
 
 Praktische handleiding voor een Wies-developer die de Rijksprofielservice wil aansluiten als bron voor profielgegevens. Stap-voor-stap, met code-voorbeelden tegen de lokale PoC-setup.
 
+> **Status PoC2:** Dit document beschrijft nog de PoC1-flow (eigen redirect + Keycloak M2M-realm). Sinds PoC2 is de profielservice zelf de OAuth Authorization Server (`django-oauth-toolkit`). De stappen op hoog niveau blijven hetzelfde, maar:
+>
+> - `Stap 1 — Keycloak client registreren` vervalt; in plaats daarvan maak je twee `oauth2_provider.Application` records aan in de profielservice Django admin: één met `authorization-code` (voor user-flow + PKCE) en één met `client-credentials` (suffix `-m2m`, voor batch-API).
+> - `redirect_uris` zit op de `oauth2_provider.Application`, niet meer op het business-`Application`-model.
+> - De token-URL is `http://localhost:8000/o/token/` op de profielservice (niet meer een Keycloak realm op poort 8081).
+> - De `oauth/authorize` URL is nu `/o/authorize/` en de flow is een **echte** Authorization Code grant met `code` + token-exchange + PKCE (verplicht).
+> - De PoC-bypass via `mint_test_token` bestaat niet meer; gebruik in plaats daarvan een client-credentials `POST /o/token/`-call met de seed-secrets uit `seed_apps.json`.
+>
+> Voor de actuele architectuur en endpoints: zie [main.md](main.md) en de README.
+
 ## Architectuur op één scherm
 
 ```

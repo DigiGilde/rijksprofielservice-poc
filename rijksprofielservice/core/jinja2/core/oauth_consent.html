@@ -1,21 +1,27 @@
 {% extends "core/base.html" %}
-{% block title %}Toestemming geven — {{ app.naam }}{% endblock %}
+{% block title %}Toestemming geven — {% if app %}{{ app.naam }}{% else %}{{ application.name }}{% endif %}{% endblock %}
 {% block content %}
-<h1>{{ app.naam }} vraagt toegang tot je profiel</h1>
-<p>{{ app.beschrijving }}</p>
+{% if error %}
+  <h1>Fout: {{ error.error }}</h1>
+  <p>{{ error.description }}</p>
+{% else %}
+<h1>{% if app %}{{ app.naam }}{% else %}{{ application.name }}{% endif %} vraagt toegang tot je profiel</h1>
+{% if app and app.beschrijving %}<p>{{ app.beschrijving }}</p>{% endif %}
 
 <p><strong>De volgende gegevens worden gedeeld als je toestemt:</strong></p>
 <ul>
   {% for f in effective_fields %}<li>{{ f }}</li>{% endfor %}
 </ul>
 
-<form method="post" action="{{ url('oauth-consent-decide') }}" style="display:flex; gap:0.5rem; margin-top:1.5rem;">
+<form method="post" action="" style="display:flex; gap:0.5rem; margin-top:1.5rem;">
   {{ get_csrf_hidden_input(request) | safe }}
-  <button name="decision" value="grant" type="submit">Toestemming geven</button>
-  <button name="decision" value="deny" type="submit" class="danger">Weigeren</button>
+  {% for field in form %}{% if field.is_hidden %}{{ field | safe }}{% endif %}{% endfor %}
+  <button name="allow" value="Authorize" type="submit">Toestemming geven</button>
+  <button type="submit" class="danger">Weigeren</button>
 </form>
 
 <p style="margin-top:1.5rem; color:#666; font-size:0.9rem;">
   Je kunt deze toestemming op elk moment intrekken via <a href="{{ url('consent-list') }}">Toestemmingen</a>.
 </p>
+{% endif %}
 {% endblock %}

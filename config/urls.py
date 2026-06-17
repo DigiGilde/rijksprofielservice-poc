@@ -3,11 +3,12 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from django.views.generic import RedirectView
 
 from rijksprofielservice.core import views as core_views
-from rijksprofielservice.core.api.views import ProfileBatchView, ProfileDetailView
+from rijksprofielservice.core.api.views import ProfileBatchView, ProfileDetailView, ProfileMeView
+from rijksprofielservice.core.oauth_views import ProfielserviceAuthorizationView
 from rijksprofielservice.rijksauth.views import auth, login, logout
 
 urlpatterns = [
@@ -24,16 +25,17 @@ urlpatterns = [
     path("profiel/foto/verwijderen/", core_views.avatar_delete, name="avatar-delete"),
     path("toestemmingen/", core_views.consent_list, name="consent-list"),
     path("toestemmingen/<int:application_id>/intrekken/", core_views.consent_revoke, name="consent-revoke"),
-    # OAuth-style consent flow (PoC1 light mimick; echte OAuth Authorization Code → PoC2)
-    path("oauth/authorize", core_views.oauth_authorize, name="oauth-authorize"),
-    path("oauth/consent", core_views.oauth_consent_screen, name="oauth-consent"),
-    path("oauth/consent/decide", core_views.oauth_consent_decide, name="oauth-consent-decide"),
+    # OAuth Authorization Server (django-oauth-toolkit). Onze custom authorize-view
+    # eerst registreren zodat hij wint van de default in `oauth2_provider.urls`.
+    path("o/authorize/", ProfielserviceAuthorizationView.as_view(), name="oauth2_provider_authorize"),
+    path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     # Demo mock consuming-app landings
     path("demo/mock-wies-landing/", core_views.mock_wies_landing, name="demo-mock-wies"),
     path("demo/mock-amt-landing/", core_views.mock_amt_landing, name="demo-mock-amt"),
     # Avatar serving
     path("avatars/<int:user_id>.jpg", core_views.avatar, name="avatar"),
-    # REST API — batch route VOOR de detail route, anders matcht "batch" als subject_id.
+    # REST API — meer-specifieke routes eerst.
+    path("api/v1/profiles/me", ProfileMeView.as_view(), name="api-profile-me"),
     path("api/v1/profiles/batch", ProfileBatchView.as_view(), name="api-profile-batch"),
     path("api/v1/profiles/<str:subject_id>", ProfileDetailView.as_view(), name="api-profile-detail"),
 ]

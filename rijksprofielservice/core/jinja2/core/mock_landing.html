@@ -2,7 +2,7 @@
 {% block title %}{{ app_label }} (mock landing){% endblock %}
 {% block content %}
 <h1>{{ app_label }} — mock consuming app</h1>
-<p style="color:#666;">Deze pagina simuleert een consuming app. Normaal zou dit een externe applicatie zijn; voor de PoC draait het binnen dezelfde Django-instantie.</p>
+<p style="color:#666;">Deze pagina simuleert een externe consuming-app. Het draait binnen dezelfde Django-instantie, maar praat via echte HTTP-calls tegen de profielservice OAuth-server (PKCE + Authorization Code voor user-flow, Client Credentials voor M2M).</p>
 
 <h2>Inkomende query-parameters</h2>
 {% if incoming %}
@@ -20,22 +20,26 @@
 <p>State die we nu uitgeven: <code>{{ fresh_state }}</code> — moet straks gelijk terugkomen.</p>
 <p><a class="btn" href="{{ authorize_url }}" style="display:inline-block; text-decoration:none;">Vraag profielgegevens aan</a></p>
 
-{% if incoming.get('consent') == 'granted' %}
-<h2 style="margin-top:1.5rem;">Server-side API-call</h2>
-<p>Toestemming is verleend voor subject_id <code>{{ incoming.get('subject_id', '(geen)') }}</code>. Haal het profiel op via de batch-API (server-side, met een mock JWT):</p>
-<form method="post">
-  {{ get_csrf_hidden_input(request) | safe }}
-  <input type="hidden" name="action" value="call-api">
-  <input type="hidden" name="subject_id" value="{{ incoming.get('subject_id', '') }}">
-  <button type="submit">Haal profiel op via batch-API</button>
-</form>
-{% elif incoming.get('consent') == 'denied' %}
-<p style="margin-top:1rem; color:#a90000;"><strong>Toestemming geweigerd.</strong> De applicatie krijgt geen toegang tot profielgegevens.</p>
+{% if incoming.get('error') %}
+<p style="margin-top:1rem; color:#a90000;"><strong>Toestemming geweigerd of fout:</strong> <code>{{ incoming.get('error') }}</code></p>
 {% endif %}
 
+{% if auth_result %}
+<h2 style="margin-top:1.5rem;">Token-exchange resultaat (status {{ auth_result.status }})</h2>
+<pre style="background:#f5f5f5; padding:1rem; overflow-x:auto;">{{ auth_result.body | tojson(indent=2) }}</pre>
+{% endif %}
+
+<h2 style="margin-top:1.5rem;">Server-side batch-call (M2M client-credentials)</h2>
+<p>Demonstreert de andere flow: app vraagt direct een M2M-token aan met haar eigen client-secret en gebruikt dit om collega-profielen op te halen.</p>
+<form method="post">
+  {{ get_csrf_hidden_input(request) | safe }}
+  <input type="hidden" name="action" value="batch">
+  <label>subject_id (sso_subject van een ambtenaar): <input type="text" name="subject_id" value="{{ sso_subject }}"></label>
+  <button type="submit">Haal profiel op via batch-API</button>
+</form>
+
 {% if api_result %}
-<h2 style="margin-top:1.5rem;">API-resultaat (status {{ api_result.status }})</h2>
-<p>Aanvraag voor subject_id: <code>{{ api_result.subject_id }}</code></p>
-<pre style="background:#f5f5f5; padding:1rem; overflow-x:auto;">{{ api_result.body | tojson(indent=2) }}</pre>
+<h2 style="margin-top:1.5rem;">API-resultaat</h2>
+<pre style="background:#f5f5f5; padding:1rem; overflow-x:auto;">{{ api_result | tojson(indent=2) }}</pre>
 {% endif %}
 {% endblock %}

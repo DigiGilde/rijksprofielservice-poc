@@ -17,10 +17,6 @@ OIDC_CLIENT_ID = None
 OIDC_CLIENT_SECRET = None
 OIDC_DISCOVERY_URL = None
 
-# JWT: gebruik test-keypair zodat tests niet de echte Keycloak JWKS hoeven.
-PROFIELSERVICE_JWT_ISSUER = "https://test-issuer.example/realms/profielservice"
-PROFIELSERVICE_JWT_ALLOW_TEST_KEY = True
-
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
