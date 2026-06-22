@@ -8,17 +8,53 @@
 <h1>{% if app %}{{ app.naam }}{% else %}{{ application.name }}{% endif %} vraagt toegang tot je profiel</h1>
 {% if app and app.beschrijving %}<p>{{ app.beschrijving }}</p>{% endif %}
 
-<p><strong>De volgende gegevens worden gedeeld als je toestemt:</strong></p>
-<ul>
-  {% for f in effective_fields %}<li>{{ f }}</li>{% endfor %}
-</ul>
+{% if existing_consent %}
+  <p class="notice">
+    Je hebt deze applicatie al eerder toegang gegeven. Pas je toestemming aan via
+    <a href="{{ url('consent-list') }}">Toestemmingen</a>.
+  </p>
 
-<form method="post" action="" style="display:flex; gap:0.5rem; margin-top:1.5rem;">
-  {{ get_csrf_hidden_input(request) | safe }}
-  {% for field in form %}{% if field.is_hidden %}{{ field | safe }}{% endif %}{% endfor %}
-  <button name="allow" value="Authorize" type="submit">Toestemming geven</button>
-  <button type="submit" class="danger">Weigeren</button>
-</form>
+  <form method="post" action="">
+    {{ get_csrf_hidden_input(request) | safe }}
+    {% for field in form %}{% if field.is_hidden %}{{ field | safe }}{% endif %}{% endfor %}
+
+    <p><strong>De volgende gegevens worden gedeeld:</strong></p>
+    <ul>
+      {% for f in existing_consent.granted_fields %}<li>{{ f }}</li>{% endfor %}
+    </ul>
+    {# Verberg hidden granted_field-inputs zodat form_valid weet dat dit een 'allow' is
+       met selectie (anders zou het als deny worden behandeld). #}
+    {% for f in existing_consent.granted_fields %}
+      <input type="hidden" name="granted_field" value="{{ f }}">
+    {% endfor %}
+
+    <div style="margin-top:1.5rem;">
+      <button name="allow" value="Authorize" type="submit">Doorgaan</button>
+    </div>
+  </form>
+{% else %}
+  <form method="post" action="">
+    {{ get_csrf_hidden_input(request) | safe }}
+    {% for field in form %}{% if field.is_hidden %}{{ field | safe }}{% endif %}{% endfor %}
+
+    <p><strong>De volgende gegevens worden gedeeld als je toestemt:</strong></p>
+    <div class="field checkbox-list">
+      <ul>
+        {% for f in effective_fields %}
+          <li>
+            <input type="checkbox" id="gf-{{ f }}" name="granted_field" value="{{ f }}" checked>
+            <label for="gf-{{ f }}">{{ f }}</label>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div style="display:flex; gap:0.5rem; margin-top:1.5rem;">
+      <button name="allow" value="Authorize" type="submit">Toestemming geven</button>
+      <button type="submit" class="danger">Weigeren</button>
+    </div>
+  </form>
+{% endif %}
 
 <p style="margin-top:1.5rem; color:#666; font-size:0.9rem;">
   Je kunt deze toestemming op elk moment intrekken via <a href="{{ url('consent-list') }}">Toestemmingen</a>.

@@ -29,13 +29,17 @@ def build_profile_response(profile: UserProfile, fields: list[str], request=None
 
 
 def fields_for_app_and_user(application: Application, user_id: int) -> list[str] | None:
-    """Returns de overlap van app-requested_fields en actieve user-consent.
+    """Returns de overlap van app-requested_fields en actieve user-consent.granted_fields.
 
-    None betekent: geen actieve consent — caller serveert `null` in batch response.
+    None betekent: geen actieve consent — caller serveert `null` in batch response of
+    een 403. Volgorde van `application.requested_fields` blijft behouden.
     """
-    has_consent = Consent.objects.filter(
-        user_id=user_id, application=application, revoked_at__isnull=True
-    ).exists()
-    if not has_consent:
+    consent = (
+        Consent.objects.filter(user_id=user_id, application=application, revoked_at__isnull=True)
+        .only("granted_fields")
+        .first()
+    )
+    if consent is None:
         return None
-    return list(application.requested_fields)
+    granted = set(consent.granted_fields or [])
+    return [f for f in (application.requested_fields or []) if f in granted]

@@ -1,4 +1,4 @@
-"""Seed demo-data voor PoC1: 3 ambtenaren + per-app consents.
+"""Seed demo-data voor PoC: 2 ambtenaren + per-app consents voor Wies.
 
 Idempotent: opnieuw draaien is veilig (gebruikt get_or_create / update_or_create).
 Applications worden geladen via `loaddata seed_apps` (zie justfile setup).
@@ -13,40 +13,30 @@ User = get_user_model()
 
 AMBTENAREN = [
     {
-        "email": "alice@minbzk.nl",
-        "first_name": "Alice",
-        "last_name": "Aap",
-        "sso_subject": "demo-sub-alice",
-        "telefoon": "06-1111-1111",
-        "functie": "Beleidsmedewerker",
-        "organisatie": "BZK",
-        "consents_to": ["mock-wies"],
+        "email": "kevin.popov@rijksoverheid.nl",
+        "first_name": "Kevin",
+        "last_name": "Popov",
+        "sso_subject": "demo-sub-kevin",
+        "telefoon": "06-4444-4444",
+        "functie": "Beleidsadviseur",
+        "organisatie": "Rijksoverheid",
+        "consents_to": ["wies"],
     },
     {
-        "email": "bob@minbzk.nl",
-        "first_name": "Bob",
-        "last_name": "Beer",
-        "sso_subject": "demo-sub-bob",
-        "telefoon": "06-2222-2222",
-        "functie": "Adviseur",
-        "organisatie": "BZK",
-        "consents_to": ["mock-amt"],
-    },
-    {
-        "email": "carol@minfin.nl",
-        "first_name": "Carol",
-        "last_name": "Citroen",
-        "sso_subject": "demo-sub-carol",
-        "telefoon": "06-3333-3333",
-        "functie": "Senior Inspecteur",
-        "organisatie": "Financiën",
-        "consents_to": ["mock-wies", "mock-amt"],
+        "email": "diana.bos@rijksoverheid.nl",
+        "first_name": "Diana",
+        "last_name": "Bos",
+        "sso_subject": "demo-sub-diana",
+        "telefoon": "06-5555-5555",
+        "functie": "Programmamanager",
+        "organisatie": "Rijksoverheid",
+        "consents_to": ["wies"],
     },
 ]
 
 
 class Command(BaseCommand):
-    help = "Seed demo-data: 3 ambtenaren + consents. Idempotent."
+    help = "Seed demo-data: 2 ambtenaren + consents voor Wies. Idempotent."
 
     def handle(self, *args, **options):
         apps_by_client_id = {a.client_id: a for a in Application.objects.all()}
@@ -79,11 +69,14 @@ class Command(BaseCommand):
                 if app is None:
                     self.stdout.write(self.style.WARNING(f"  Application {client_id} niet gevonden, overslaan"))
                     continue
-                # Actieve consent = revoked_at IS NULL. Get-or-create voorkomt duplicates.
+                # Bij nieuwe consent: granted_fields gelijk aan alles wat de app vraagt,
+                # zodat de API direct profielvelden teruggeeft (anders zou granted_fields
+                # leeg blijven door de model-default en zou de API niks delen).
                 Consent.objects.get_or_create(
                     user=user,
                     application=app,
                     revoked_at=None,
+                    defaults={"granted_fields": list(app.requested_fields or [])},
                 )
 
         self.stdout.write(self.style.SUCCESS("Demo-data geseed."))

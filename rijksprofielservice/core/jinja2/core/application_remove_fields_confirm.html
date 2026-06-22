@@ -1,0 +1,38 @@
+{% extends "core/base.html" %}
+{% block title %}Velden verwijderen bevestigen — {{ app.naam }}{% endblock %}
+{% block content %}
+<h1>Weet je het zeker?</h1>
+
+<p class="notice">
+  Je staat op het punt om de volgende velden te verwijderen uit
+  <strong>{{ app.naam }}</strong>:
+</p>
+
+<ul>
+  {% for f in removed_fields %}<li><strong>{{ f }}</strong></li>{% endfor %}
+</ul>
+
+<p>
+  Hierdoor wordt de toestemming voor deze velden ingetrokken bij
+  <strong>{{ affected_consents }}</strong> gebruiker{% if affected_consents != 1 %}s{% endif %}
+  die op dit moment een actieve toestemming voor deze applicatie hebben.
+  Als je deze velden later opnieuw toevoegt, moeten gebruikers er opnieuw expliciet
+  toestemming voor geven.
+</p>
+
+<form method="post" action="{{ url('application-edit', args=[app.pk]) }}">
+  {{ get_csrf_hidden_input(request) | safe }}
+  {% for key in post_data.keys() %}
+    {% if key != 'csrfmiddlewaretoken' and key != 'confirm_remove' %}
+      {% for value in post_data.getlist(key) %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+  <input type="hidden" name="confirm_remove" value="1">
+  <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+    <button type="submit" class="danger">Ja, verwijderen</button>
+    <a href="{{ url('application-edit', args=[app.pk]) }}" class="btn" style="background:#666;">Annuleren</a>
+  </div>
+</form>
+{% endblock %}

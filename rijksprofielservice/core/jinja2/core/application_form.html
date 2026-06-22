@@ -1,0 +1,89 @@
+{% extends "core/base.html" %}
+{% block title %}{% if mode == 'create' %}Nieuwe applicatie{% else %}{{ app.naam }} bewerken{% endif %} — Rijksprofielservice{% endblock %}
+{% block content %}
+<p><a href="{{ url('application-list') }}">&larr; Terug naar applicaties</a></p>
+<h1>{% if mode == 'create' %}Nieuwe applicatie{% else %}{{ app.naam }} bewerken{% endif %}</h1>
+
+<form method="post">
+  {{ get_csrf_hidden_input(request) | safe }}
+
+  <div class="field field-inline">
+    {{ form.is_approved | safe }}
+    <label for="{{ form.is_approved.id_for_label }}">{{ form.is_approved.label }}</label>
+    {% if form.is_approved.errors %}<p style="color:#a90000;">{{ form.is_approved.errors | join(', ') }}</p>{% endif %}
+  </div>
+
+  {% if mode == 'edit' %}
+    <div class="field">
+      <label>Client ID</label>
+      <input type="text" value="{{ app.client_id }}" disabled>
+      <small style="color:#666;">Niet aanpasbaar na aanmaken.</small>
+    </div>
+  {% endif %}
+
+  {% set ordered = ['naam', 'client_id', 'redirect_uri', 'beschrijving', 'requested_fields'] %}
+  {% for field_name in ordered %}
+    {% if field_name in form.fields %}
+      {% set field = form[field_name] %}
+      <div class="field{% if field_name == 'requested_fields' %} checkbox-list{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field | safe }}
+        {% if field.errors %}<p style="color:#a90000;">{{ field.errors | join(', ') }}</p>{% endif %}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  <button type="submit">Opslaan</button>
+</form>
+
+{% if mode == 'edit' %}
+<h2 style="margin-top:2rem;">OAuth-credentials</h2>
+<p style="color:#a90000; font-size:0.9rem;">
+  Behandel deze secrets als wachtwoorden. Tijdelijke weergave — wordt later beperkt.
+</p>
+
+{% for client, label in [(auth_client, 'Authorization Code (login-flow)'), (m2m_client, 'Client Credentials (M2M)')] %}
+  {% if client %}
+    <h3 style="margin-top:1rem;">{{ label }}</h3>
+    <div class="field">
+      <label>Client ID</label>
+      <div style="display:flex; gap:0.5rem;">
+        <input type="text" value="{{ client.client_id }}" readonly style="flex:1;">
+        <button type="button" data-copy="{{ client.client_id }}">Kopiëren</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Client secret</label>
+      <div style="display:flex; gap:0.5rem;">
+        <input type="password" value="{{ client.client_secret }}" readonly style="flex:1;" data-secret>
+        <button type="button" data-toggle-visibility aria-label="Tonen/verbergen">&#128065;</button>
+        <button type="button" data-copy="{{ client.client_secret }}">Kopiëren</button>
+      </div>
+    </div>
+  {% endif %}
+{% endfor %}
+
+<script>
+  (function () {
+    document.querySelectorAll('[data-toggle-visibility]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var input = btn.parentElement.querySelector('[data-secret]');
+        if (!input) return;
+        input.type = input.type === 'password' ? 'text' : 'password';
+      });
+    });
+    document.querySelectorAll('[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var value = btn.getAttribute('data-copy');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(value);
+        }
+        var original = btn.textContent;
+        btn.textContent = 'Gekopieerd';
+        setTimeout(function () { btn.textContent = original; }, 1200);
+      });
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

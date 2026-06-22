@@ -101,6 +101,8 @@ class Consent(models.Model):
     application = models.ForeignKey(Application, on_delete=models.CASCADE, related_name="consents")
     granted_at = models.DateTimeField(auto_now_add=True)
     revoked_at = models.DateTimeField(blank=True, null=True)
+    # Subset van application.requested_fields waarvoor de gebruiker toestemming gaf.
+    granted_fields = models.JSONField(default=list)
 
     class Meta:
         constraints = [

@@ -37,6 +37,23 @@ def test_batch_filters_fields_to_requested_only(client, alice, mock_wies, alice_
     assert "organisatie" not in profile
 
 
+def test_batch_filters_to_granted_fields_subset(client, alice, mock_wies, alice_consents_wies, wies_token):
+    """Als de gebruiker maar een subset gegrant heeft, krijgt de app ook alleen die velden."""
+    alice_consents_wies.granted_fields = ["naam", "email"]
+    alice_consents_wies.save(update_fields=["granted_fields"])
+    response = client.post(
+        "/api/v1/profiles/batch",
+        data=json.dumps({"subject_ids": ["sub-alice"]}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {wies_token}",
+    )
+    profile = response.json()["profiles"]["sub-alice"]
+    assert profile["naam"] == "Alice Aap"
+    assert profile["email"] == "alice@minbzk.nl"
+    assert "telefoon" not in profile
+    assert "functie" not in profile
+
+
 def test_batch_returns_null_for_user_without_consent(client, alice, mock_wies, wies_token):
     """Alice heeft geen consent gegeven aan mock-wies."""
     response = client.post(
@@ -163,7 +180,7 @@ def test_api_request_is_logged(client, alice, mock_wies, alice_consents_wies, wi
 # -------------------------- user-bound token (Authorization Code) --------------------------
 
 
-def test_me_endpoint_returns_profile_for_user_bound_token(client, alice, mock_wies, mock_wies_dot_app):
+def test_me_endpoint_returns_profile_for_user_bound_token(client, alice, mock_wies, alice_consents_wies, mock_wies_dot_app):
     token = AccessToken.objects.create(
         user=alice,
         application=mock_wies_dot_app,
@@ -176,6 +193,38 @@ def test_me_endpoint_returns_profile_for_user_bound_token(client, alice, mock_wi
     body = response.json()
     assert body["naam"] == "Alice Aap"
     assert "organisatie" not in body  # niet in requested_fields voor mock-wies
+
+
+def test_me_endpoint_filters_by_granted_fields(client, alice, mock_wies, alice_consents_wies, mock_wies_dot_app):
+    """Subset op Consent.granted_fields filtert ook /profiles/me."""
+    alice_consents_wies.granted_fields = ["naam", "email"]
+    alice_consents_wies.save(update_fields=["granted_fields"])
+    token = AccessToken.objects.create(
+        user=alice,
+        application=mock_wies_dot_app,
+        token="alice-user-token-subset",
+        expires=timezone.now() + timedelta(hours=1),
+        scope="read_profile",
+    )
+    response = client.get("/api/v1/profiles/me", HTTP_AUTHORIZATION=f"Bearer {token.token}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["naam"] == "Alice Aap"
+    assert "telefoon" not in body
+    assert "functie" not in body
+
+
+def test_me_endpoint_returns_403_without_consent(client, alice, mock_wies, mock_wies_dot_app):
+    """Zonder actieve Consent geeft /profiles/me een 403, ook met geldig user-token."""
+    token = AccessToken.objects.create(
+        user=alice,
+        application=mock_wies_dot_app,
+        token="alice-user-token-no-consent",
+        expires=timezone.now() + timedelta(hours=1),
+        scope="read_profile",
+    )
+    response = client.get("/api/v1/profiles/me", HTTP_AUTHORIZATION=f"Bearer {token.token}")
+    assert response.status_code == 403
 
 
 def test_me_endpoint_rejects_client_credentials_token(client, mock_wies, wies_token):

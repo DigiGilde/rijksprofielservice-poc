@@ -61,7 +61,9 @@ class ProfileMeView(APIView):
 
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         APIRequest.objects.create(application=app, subject_ids=[profile.sso_subject or str(request.user.pk)])
-        fields = list(app.requested_fields)
+        fields = fields_for_app_and_user(app, request.user.id)
+        if fields is None:
+            return Response({"detail": "Geen toestemming"}, status=status.HTTP_403_FORBIDDEN)
         body = build_profile_response(profile, fields, request)
         # `subject_id` is geen profielveld maar token-metadata: het laat de consuming
         # app weten welke SSO-identiteit bij dit token hoort, zodat ze die kunnen

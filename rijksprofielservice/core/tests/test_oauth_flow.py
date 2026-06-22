@@ -58,6 +58,7 @@ def test_grant_creates_authorization_code(client, alice, mock_wies, authorize_pa
     client.force_login(alice)
     grant_post = {k: v for k, v in authorize_params.items() if not k.startswith("_")}
     grant_post["allow"] = "Authorize"
+    grant_post["granted_field"] = list(mock_wies.requested_fields)
     response = client.post("/o/authorize/", grant_post)
     assert response.status_code == 302
     qs = parse_qs(urlparse(response.url).query)
@@ -67,10 +68,15 @@ def test_grant_creates_authorization_code(client, alice, mock_wies, authorize_pa
 
 
 def _complete_flow(client, alice, mock_wies, authorize_params):
-    """Helper: doorloop authorize + token exchange, return access_token-body."""
+    """Helper: doorloop authorize + token exchange, return access_token-body.
+
+    Simuleert wat de browser doet: alle gevraagde velden zijn vooraf-aangevinkt
+    en worden dus meegestuurd in de POST.
+    """
     client.force_login(alice)
     grant_post = {k: v for k, v in authorize_params.items() if not k.startswith("_")}
     grant_post["allow"] = "Authorize"
+    grant_post["granted_field"] = list(mock_wies.requested_fields)
     grant_response = client.post("/o/authorize/", grant_post)
     code = parse_qs(urlparse(grant_response.url).query)["code"][0]
     token_response = client.post(
@@ -91,7 +97,46 @@ def test_token_exchange_creates_consent_via_signal(client, alice, mock_wies, aut
     """app_authorized signal vuurt op /o/token/-call; daar wordt Consent aangemaakt."""
     response = _complete_flow(client, alice, mock_wies, authorize_params)
     assert response.status_code == 200
-    assert Consent.objects.filter(user=alice, application=mock_wies, revoked_at__isnull=True).exists()
+    consent = Consent.objects.get(user=alice, application=mock_wies, revoked_at__isnull=True)
+    # Default (geen subset gekozen) → alles wat de app vraagt wordt opgeslagen.
+    assert set(consent.granted_fields) == set(mock_wies.requested_fields)
+
+
+def test_consent_screen_subset_selection_persists_to_consent(client, alice, mock_wies, authorize_params):
+    """Subset op het consent-scherm → enkel die velden komen in Consent.granted_fields."""
+    client.force_login(alice)
+    grant_post = {k: v for k, v in authorize_params.items() if not k.startswith("_")}
+    grant_post["allow"] = "Authorize"
+    grant_post["granted_field"] = ["naam", "email"]
+    grant_response = client.post("/o/authorize/", grant_post)
+    code = parse_qs(urlparse(grant_response.url).query)["code"][0]
+    token_response = client.post(
+        "/o/token/",
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": authorize_params["redirect_uri"],
+            "client_id": mock_wies.client_id,
+            "client_secret": mock_wies.oauth_app.client_secret,
+            "code_verifier": authorize_params["_verifier"],
+        },
+    )
+    assert token_response.status_code == 200
+    consent = Consent.objects.get(user=alice, application=mock_wies, revoked_at__isnull=True)
+    assert set(consent.granted_fields) == {"naam", "email"}
+
+
+def test_unticking_all_fields_treats_as_deny(client, alice, mock_wies, authorize_params):
+    """Allow=Authorize maar zonder gekozen velden → silent deny, geen Consent."""
+    client.force_login(alice)
+    grant_post = {k: v for k, v in authorize_params.items() if not k.startswith("_")}
+    grant_post["allow"] = "Authorize"
+    # Geen granted_field in de POST
+    response = client.post("/o/authorize/", grant_post)
+    assert response.status_code == 302
+    qs = parse_qs(urlparse(response.url).query)
+    assert qs.get("error") == ["access_denied"]
+    assert not Consent.objects.filter(user=alice, application=mock_wies, revoked_at__isnull=True).exists()
 
 
 def test_deny_does_not_create_consent(client, alice, mock_wies, authorize_params):
@@ -110,6 +155,7 @@ def test_token_exchange_returns_access_token(client, alice, mock_wies, authorize
     client.force_login(alice)
     grant_post = {k: v for k, v in authorize_params.items() if not k.startswith("_")}
     grant_post["allow"] = "Authorize"
+    grant_post["granted_field"] = list(mock_wies.requested_fields)
     grant_response = client.post("/o/authorize/", grant_post)
     code = parse_qs(urlparse(grant_response.url).query)["code"][0]
 

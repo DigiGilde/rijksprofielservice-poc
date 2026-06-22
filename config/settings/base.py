@@ -128,14 +128,6 @@ REST_FRAMEWORK = {
     "UNAUTHENTICATED_USER": None,
 }
 
-# Mock consuming-app client_secrets — alleen voor de demo-landings (server-side
-# token-exchange en M2M-grants). Productie-clients hebben hun eigen secret-storage.
-MOCK_CLIENT_SECRETS = {
-    "mock-wies": "local-dev-secret-wies",
-    "mock-wies-m2m": "local-dev-secret-wies",
-    "mock-amt": "local-dev-secret-amt",
-    "mock-amt-m2m": "local-dev-secret-amt",
-}
 
 # OAuth Authorization Server (django-oauth-toolkit). Profielservice is zelf de AS;
 # één scope ('read_profile') — field-filtering blijft in fields_for_app_and_user.

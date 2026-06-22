@@ -1,0 +1,27 @@
+{% extends "core/base.html" %}
+{% block title %}Toestemming voor {{ application.naam }} — Rijksprofielservice{% endblock %}
+{% block content %}
+<p><a href="{{ url('consent-list') }}">&larr; Terug naar toestemmingen</a></p>
+<h1>{{ application.naam }}</h1>
+{% if application.beschrijving %}<p>{{ application.beschrijving }}</p>{% endif %}
+
+<p>Vink aan welke profielvelden deze applicatie mag gebruiken. Als je alles uitvinkt
+wordt de toestemming volledig ingetrokken.</p>
+
+<form method="post" action="{{ url('consent-update', args=[application.id]) }}" class="checkbox-list">
+  {{ get_csrf_hidden_input(request) | safe }}
+  <ul>
+    {% for f in application.requested_fields %}
+      <li>
+        <input type="checkbox" id="cf-{{ f }}" name="granted_field" value="{{ f }}"
+               {% if f in consent.granted_fields %}checked{% endif %}>
+        <label for="cf-{{ f }}">{{ f }}</label>
+      </li>
+    {% endfor %}
+  </ul>
+  <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+    <button type="submit">Opslaan</button>
+    <a href="{{ url('consent-list') }}" class="btn" style="background:#666;">Annuleren</a>
+  </div>
+</form>
+{% endblock %}

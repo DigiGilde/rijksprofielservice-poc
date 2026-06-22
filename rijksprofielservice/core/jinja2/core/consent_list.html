@@ -4,12 +4,12 @@
 <h1>Toestemmingen</h1>
 <p>Hieronder zie je welke applicaties op dit moment jouw profielgegevens mogen gebruiken.
 Toegang krijgen applicaties wanneer je daar bij eerste gebruik toestemming voor geeft;
-je kunt die toestemming hier op elk moment intrekken.</p>
+je kunt die toestemming hier op elk moment aanpassen of intrekken.</p>
 
 {% if consents %}
 <table>
   <thead>
-    <tr><th>Applicatie</th><th>Velden</th><th>Actie</th></tr>
+    <tr><th>Applicatie</th><th>Actie</th></tr>
   </thead>
   <tbody>
     {% for consent in consents %}
@@ -18,8 +18,8 @@ je kunt die toestemming hier op elk moment intrekken.</p>
           <strong>{{ consent.application.naam }}</strong><br>
           <small>{{ consent.application.beschrijving }}</small>
         </td>
-        <td>{{ consent.application.requested_fields | join(', ') }}</td>
-        <td>
+        <td style="display:flex; gap:0.5rem;">
+          <a href="{{ url('consent-edit', args=[consent.application.id]) }}" class="btn">Bewerken</a>
           <form method="post" action="{{ url('consent-revoke', args=[consent.application.id]) }}">
             {{ get_csrf_hidden_input(request) | safe }}
             <button class="danger" type="submit">Intrekken</button>

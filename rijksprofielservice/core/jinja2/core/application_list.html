@@ -1,0 +1,45 @@
+{% extends "core/base.html" %}
+{% block title %}Applicaties — Rijksprofielservice{% endblock %}
+{% block content %}
+<h1>Applicaties</h1>
+<p>Hier beheer je de OAuth-applicaties die gebruik mogen maken van de Rijksprofielservice.
+Bij iedere applicatie horen automatisch twee OAuth-clients: één voor inlogflow (Authorization Code) en één voor server-naar-server (Client Credentials, suffix <code>-m2m</code>).</p>
+
+<p style="margin: 1rem 0;">
+  <a class="btn" href="{{ url('application-create') }}" style="text-decoration:none; display:inline-block;">Nieuwe applicatie</a>
+</p>
+
+{% if apps %}
+<table>
+  <thead>
+    <tr>
+      <th>Naam</th>
+      <th>Status</th>
+      <th>Acties</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for app in apps %}
+      <tr>
+        <td><strong>{{ app.naam }}</strong></td>
+        <td>{{ 'Goedgekeurd' if app.is_approved else 'In behandeling' }}</td>
+        <td style="white-space:nowrap;">
+          <a href="{{ url('application-edit', args=[app.id]) }}">Bewerken</a>
+          &nbsp;·&nbsp;
+          <form method="post" action="{{ url('application-delete', args=[app.id]) }}" style="display:inline;">
+            {{ get_csrf_hidden_input(request) | safe }}
+            <button class="danger" type="submit"
+                    onclick="return confirm('Applicatie {{ app.naam }} en bijbehorende OAuth-clients, tokens en toestemmingen verwijderen?');"
+                    style="background:none; border:0; color:#a90000; padding:0; cursor:pointer; text-decoration:underline; font:inherit;">
+              Verwijderen
+            </button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Nog geen applicaties geregistreerd.</p>
+{% endif %}
+{% endblock %}

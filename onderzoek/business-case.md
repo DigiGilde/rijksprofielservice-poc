@@ -1,14 +1,18 @@
 # Business case
 
-Mogelijke afnemers:
-- amt
+Mogelijke afnemers al in gebruik:
 - wies
 - zad
+- amt
 - bouwmeester (meest complexe)
+- regelrecht-editor
+- invulhulpen (pre-dpia en iama)
 - grip
-- rr-editor
-- docs?
-- assesment boekhouding
 - pleinbzk
+- bg
+
+
+Mogelijke uitbreidingen, uitzoekwerk nodig:
 - mijn bureau - chat
+- mijn bureau - docs
 - mattermost

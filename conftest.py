@@ -106,7 +106,11 @@ def mock_amt(mock_amt_dot_app):
 
 @pytest.fixture
 def alice_consents_wies(alice, mock_wies):
-    return Consent.objects.create(user=alice, application=mock_wies)
+    return Consent.objects.create(
+        user=alice,
+        application=mock_wies,
+        granted_fields=list(mock_wies.requested_fields),
+    )
 
 
 @pytest.fixture

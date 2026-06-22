@@ -33,10 +33,25 @@ def record_consent_on_authorize(sender, request, token, **kwargs):
     Token = bewijs van consent, en de DOT-grant zelf is de bron-of-truth voor
     toegang. We schaduwen alleen in de Consent-tabel zodat het beheerscherm
     (`consent-list`) en het revoke-pad simpel kunnen blijven werken.
+
+    De `granted_fields` worden gezet uit de session-key die `ProfielserviceAuthorizationView`
+    achterlaat bij `/o/authorize/`. Geen session-data (bv. skip_authorization=True of
+    bestaande consent bij re-authorize) → fallback naar alle requested_fields.
     """
     if token is None or token.user is None or token.application is None:
         return
     app = Application.objects.filter(oauth_app=token.application).first()
     if app is None:
         return
-    Consent.objects.get_or_create(user=token.user, application=app, revoked_at=None)
+    session_key = f"pending_consent_fields:{token.application.client_id}"
+    fields = request.session.pop(session_key, None) if request is not None else None
+    if fields is None:
+        fields = list(app.requested_fields or [])
+    allowed = set(app.requested_fields or [])
+    fields = [f for f in fields if f in allowed]
+    Consent.objects.get_or_create(
+        user=token.user,
+        application=app,
+        revoked_at=None,
+        defaults={"granted_fields": fields},
+    )

@@ -12,12 +12,20 @@
     h1 { font-size: 1.5rem; }
     table { border-collapse: collapse; width: 100%; }
     th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; }
-    button, .btn { background: #154273; color: white; border: 0; padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 3px; }
+    button, .btn { background: #154273; color: white; border: 0; padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 3px; display: inline-block; text-decoration: none; font: inherit; }
     button:disabled { background: #b0b8c4; cursor: not-allowed; }
     button.danger { background: #a90000; }
     .field { margin: 0.75rem 0; }
     .field label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
     .field input, .field textarea { width: 100%; padding: 0.4rem; border: 1px solid #ccc; border-radius: 3px; }
+    /* Checkboxes mogen niet 100% breed worden zoals de globale .field input regel doet. */
+    .field input[type="checkbox"] { width: auto; vertical-align: middle; margin: 0; }
+    .checkbox-list ul { list-style: none; padding: 0; margin: 0.25rem 0 0; }
+    .checkbox-list li { margin: 0.15rem 0; display: flex; align-items: center; gap: 0.4rem; }
+    .checkbox-list li label { display: inline; font-weight: normal; }
+    .field-inline { margin-top: 1rem; display: flex; align-items: center; gap: 0.4rem; }
+    .field-inline label { display: inline; font-weight: normal; margin: 0; }
+    .notice { background: #fff8d8; border: 1px solid #e6cf6c; border-radius: 3px; padding: 0.6rem 0.8rem; margin: 0 0 1rem; font-size: 0.95rem; }
     img.avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
   </style>
 </head>

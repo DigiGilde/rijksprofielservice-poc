@@ -43,7 +43,7 @@ format:
   uv run ruff format .
 
 # Haal een client-credentials access_token van de profielservice OAuth-server
-m2m-token client_id="mock-wies-m2m" client_secret="local-dev-secret-wies":
+m2m-token client_id="wies-m2m" client_secret="local-dev-secret-wies":
   @curl -s -X POST http://localhost:8000/o/token/ \
     -d grant_type=client_credentials \
     -d scope=read_profile \
@@ -53,11 +53,6 @@ m2m-token client_id="mock-wies-m2m" client_secret="local-dev-secret-wies":
 # Demo-flow: start met SKIP_OIDC=false zodat SSO-login via Wies-dev realm loopt
 demo-sso:
   SKIP_OIDC=false docker compose up
-
-# Print landing-URLs voor de OAuth-style consent demo
-demo-url:
-  @echo "Mock Wies landing: http://localhost:8000/demo/mock-wies-landing/"
-  @echo "Mock AMT  landing: http://localhost:8000/demo/mock-amt-landing/"
 
 # Download vendored frontend libs
 update-vendor:

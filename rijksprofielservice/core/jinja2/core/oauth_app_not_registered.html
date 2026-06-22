@@ -1,0 +1,16 @@
+{% extends "core/base.html" %}
+{% block title %}Applicatie niet geregistreerd — Rijksprofielservice{% endblock %}
+{% block content %}
+<h1>Deze applicatie is niet geregistreerd</h1>
+<p>
+  De applicatie die toegang vraagt tot je profiel is niet bekend bij de Rijksprofielservice.
+  De beheerder van de applicatie moet de OAuth-client eerst registreren voordat gebruikers
+  toestemming kunnen geven.
+</p>
+{% if client_id %}
+<p>Aangevraagde <code>client_id</code>: <code>{{ client_id }}</code></p>
+{% else %}
+<p>Er is geen <code>client_id</code> meegestuurd in het verzoek.</p>
+{% endif %}
+<p style="margin-top:1.5rem;"><a href="{{ url('home') }}">Terug naar Rijksprofielservice</a></p>
+{% endblock %}

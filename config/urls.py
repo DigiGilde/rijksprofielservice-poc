@@ -24,14 +24,17 @@ urlpatterns = [
     path("profiel/foto/", core_views.avatar_update, name="avatar-update"),
     path("profiel/foto/verwijderen/", core_views.avatar_delete, name="avatar-delete"),
     path("toestemmingen/", core_views.consent_list, name="consent-list"),
+    path("toestemmingen/<int:application_id>/bewerken/", core_views.consent_edit, name="consent-edit"),
     path("toestemmingen/<int:application_id>/intrekken/", core_views.consent_revoke, name="consent-revoke"),
+    path("toestemmingen/<int:application_id>/opslaan/", core_views.consent_update, name="consent-update"),
+    path("applicaties/", core_views.application_list, name="application-list"),
+    path("applicaties/nieuw/", core_views.application_create, name="application-create"),
+    path("applicaties/<int:pk>/bewerken/", core_views.application_edit, name="application-edit"),
+    path("applicaties/<int:pk>/verwijderen/", core_views.application_delete, name="application-delete"),
     # OAuth Authorization Server (django-oauth-toolkit). Onze custom authorize-view
     # eerst registreren zodat hij wint van de default in `oauth2_provider.urls`.
     path("o/authorize/", ProfielserviceAuthorizationView.as_view(), name="oauth2_provider_authorize"),
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
-    # Demo mock consuming-app landings
-    path("demo/mock-wies-landing/", core_views.mock_wies_landing, name="demo-mock-wies"),
-    path("demo/mock-amt-landing/", core_views.mock_amt_landing, name="demo-mock-amt"),
     # Avatar serving
     path("avatars/<int:user_id>.jpg", core_views.avatar, name="avatar"),
     # REST API — meer-specifieke routes eerst.
