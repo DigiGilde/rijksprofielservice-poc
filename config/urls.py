@@ -18,6 +18,7 @@ urlpatterns = [
     path("uitloggen/", logout, name="logout"),
     path("auth/", auth, name="auth"),
     path("geen-toegang/", core_views.no_access, name="no-access"),
+    path("privacy/", core_views.privacy, name="privacy"),
     # Profielservice UI
     path("", RedirectView.as_view(pattern_name="profile-edit", permanent=False), name="home"),
     path("profiel/", core_views.profile_edit, name="profile-edit"),

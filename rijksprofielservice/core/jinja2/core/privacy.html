@@ -1,0 +1,116 @@
+{% extends "core/base.html" %}
+{% block title %}Privacyverklaring · Rijksprofielservice{% endblock %}
+{% block content %}
+<article class="privacy">
+<!--
+  Bron van waarheid voor de privacyverklaring.
+  Na wijzigen: `uv run python manage.py generate_privacy_html`
+  De test `test_privacy_html_in_sync_with_markdown` faalt als
+  rijksprofielservice/core/jinja2/core/privacy.html niet meer overeenkomt.
+-->
+<h1>Privacyverklaring</h1>
+<p>Rijksprofielservice is een centrale plek waar je je profielgegevens beheert en
+toestemming geeft aan applicaties om deze gegevens te gebruiken. In deze
+privacyverklaring leggen wij uit welke persoonsgegevens wij verwerken, waarom
+wij dat doen en welke rechten je hebt.</p>
+<h2>Wie zijn wij?</h2>
+<p>Rijksprofielservice is een dienst van de Rijksorganisatie voor Ontwikkeling,
+Digitalisering en Innovatie (ODI) binnen de Rijksoverheid. De
+verwerkingsverantwoordelijke voor de persoonsgegevens die via
+Rijksprofielservice worden verwerkt is ODI.</p>
+<p>Heb je vragen over deze privacyverklaring of over de verwerking van jouw
+persoonsgegevens? Neem dan contact met ons op via
+<code>TODO: contactadres invullen</code>.</p>
+<h2>Welke persoonsgegevens verwerken wij?</h2>
+<p>Rijksprofielservice verwerkt alleen de persoonsgegevens die nodig zijn voor het
+beheren van je profiel en de toestemmingen die je verleent aan applicaties. Het
+gaat om de volgende gegevens:</p>
+<ul>
+<li>Profielgegevens die je zelf invult, zoals naam, e-mailadres en profielfoto</li>
+<li>Een uniek gebruikers-ID waarmee applicaties jouw profiel kunnen opvragen</li>
+<li>Toestemmingen per applicatie: welke velden je hebt vrijgegeven en wanneer je
+de toestemming hebt verleend of ingetrokken</li>
+<li>Sessie- en OAuth-gegevens die nodig zijn om je veilig in te loggen en
+applicaties namens jou toegang te geven</li>
+</ul>
+<h2>Waarvoor gebruiken wij jouw gegevens?</h2>
+<p>Wij verwerken jouw persoonsgegevens voor de volgende doeleinden:</p>
+<ul>
+<li>Het tonen en bijwerken van je profiel</li>
+<li>Het delen van profielvelden met applicaties waarvoor jij expliciet
+toestemming hebt gegeven, en alleen voor die velden</li>
+<li>Het beheren en intrekken van eerder verleende toestemmingen</li>
+<li>Het beveiligen van de dienst en het kunnen aantonen welke toestemmingen
+wanneer zijn verleend of ingetrokken</li>
+</ul>
+<h2>Op welke grondslag verwerken wij jouw gegevens?</h2>
+<p>Het delen van profielgegevens met applicaties gebeurt op basis van jouw
+<strong>toestemming</strong> (artikel 6, lid 1, sub a AVG). Voor het in stand houden van de
+profielservice zelf — inloggen, beheer van je profiel en het bijhouden van
+toestemmingen — beroepen wij ons op het <strong>gerechtvaardigd belang</strong> (artikel 6,
+lid 1, sub f AVG) van ODI om medewerkers een veilige, centrale plek te bieden
+voor het beheren van profielgegevens.</p>
+<h2>Ontvangers van persoonsgegevens</h2>
+<p>Jouw profielgegevens worden alleen gedeeld met applicaties waarvoor jij
+toestemming hebt gegeven, en uitsluitend voor de velden die jij hebt
+aangevinkt. Applicaties kunnen niet op eigen initiatief aankoppelen op
+Rijksprofielservice: elke applicatie die via Rijksprofielservice profielen
+mag opvragen is vooraf expliciet door ODI beoordeeld en goedgekeurd.
+Beheerders van Rijksprofielservice binnen ODI hebben toegang voor zover dat
+noodzakelijk is voor beheer en ondersteuning. Wij delen jouw gegevens niet met
+andere derden, tenzij wij hiertoe wettelijk verplicht zijn.</p>
+<h2>Doorgifte buiten de EER</h2>
+<p>Wij geven jouw persoonsgegevens niet door aan landen buiten de Europese
+Economische Ruimte (EER) of aan internationale organisaties.</p>
+<h2>Bewaartermijn</h2>
+<p>Wij bewaren jouw persoonsgegevens niet langer dan noodzakelijk is voor de
+doeleinden waarvoor ze zijn verzameld. Toestemmingen en
+toestemmingsmutaties worden bewaard zolang dit nodig is om aantoonbaar te
+maken welke gegevens met welke applicatie zijn gedeeld.</p>
+<h2>Cookies en tracking</h2>
+<p>Rijksprofielservice gebruikt alleen functionele cookies die nodig zijn voor
+inloggen en het werkend houden van de dienst. Wij gebruiken geen cookies of
+andere trackingtools om jouw gedrag te volgen.</p>
+<h2>Jouw privacyrechten</h2>
+<p>Op grond van de AVG heb je de volgende rechten met betrekking tot jouw
+persoonsgegevens:</p>
+<ul>
+<li><strong>Recht op inzage</strong> — je mag opvragen welke gegevens wij van je verwerken</li>
+<li><strong>Recht op rectificatie</strong> — je mag onjuiste gegevens laten corrigeren</li>
+<li><strong>Recht op verwijdering</strong> — je mag in bepaalde gevallen vragen je gegevens te wissen</li>
+<li><strong>Recht op beperking</strong> — je mag vragen de verwerking tijdelijk stil te zetten</li>
+<li><strong>Recht op bezwaar</strong> — je mag bezwaar maken tegen de verwerking van je gegevens</li>
+<li><strong>Recht op overdraagbaarheid</strong> — je mag je gegevens in een gangbaar formaat opvragen</li>
+</ul>
+<p>Wil je een van deze rechten uitoefenen? Neem dan contact met ons op via
+<code>TODO: contactadres invullen</code>.
+Wij reageren binnen vier weken op je verzoek.</p>
+<h2>Recht om toestemming in te trekken</h2>
+<p>De toestemming die je hebt gegeven aan een applicatie kun je op elk moment
+intrekken via de pagina <strong>Toestemmingen</strong> in Rijksprofielservice. Het intrekken
+van toestemming heeft geen invloed op de rechtmatigheid van de verwerking vóór
+de intrekking.</p>
+<p>Je toestemming is vrijwillig. Als je toestemming weigert of intrekt, betekent
+dat alleen dat de betreffende applicatie de geweigerde profielvelden niet
+ontvangt. Je behoudt toegang tot de applicatie zelf; de applicatie blijft
+gewoon werken zonder die gegevens.</p>
+<h2>Klacht indienen</h2>
+<p>Ben je het niet eens met de manier waarop wij met jouw persoonsgegevens omgaan?
+Dan kun je contact opnemen met onze CISO en privacy officer via:
+<a href="mailto:OBF.CISO@rijksoverheid.nl">OBF.CISO@rijksoverheid.nl</a>. Ben je niet
+goed geholpen en wil je een klacht indienen, dan kan dat bij de Autoriteit
+Persoonsgegevens. Meer informatie vind je op
+<a href="https://www.autoriteitpersoonsgegevens.nl" target="_blank" rel="noopener">autoriteitpersoonsgegevens.nl</a>.</p>
+<h2>Geautomatiseerde besluitvorming</h2>
+<p>Rijksprofielservice maakt geen gebruik van geautomatiseerde besluitvorming of
+profilering.</p>
+<h2>Datalekken</h2>
+<p>Een datalek is het onbedoeld vrijkomen, wijzigen, vernietigen of toegankelijk
+worden van persoonsgegevens. Heb je een datalek ontdekt of heb je een
+vermoeden? Meld dit dan direct via
+<code>TODO: contactadres invullen</code>.</p>
+<h2>Wijzigingen</h2>
+<p>Wij kunnen deze privacyverklaring van tijd tot tijd aanpassen. De meest recente
+versie is altijd beschikbaar op deze pagina.</p>
+</article>
+{% endblock %}

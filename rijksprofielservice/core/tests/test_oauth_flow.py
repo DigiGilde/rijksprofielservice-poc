@@ -103,14 +103,22 @@ def test_token_exchange_creates_consent_via_signal(client, alice, mock_wies, aut
 
 
 def test_consent_screen_subset_selection_persists_to_consent(client, alice, mock_wies, authorize_params):
-    """Subset op het consent-scherm → enkel die velden komen in Consent.granted_fields."""
+    """Subset op het consent-scherm → enkel die velden komen in Consent.granted_fields.
+
+    Token-exchange wordt vanuit een aparte client gedaan om productie-gedrag te
+    matchen (server-to-server call zonder browser-session).
+    """
+    from django.test import Client
+
     client.force_login(alice)
     grant_post = {k: v for k, v in authorize_params.items() if not k.startswith("_")}
     grant_post["allow"] = "Authorize"
     grant_post["granted_field"] = ["naam", "email"]
     grant_response = client.post("/o/authorize/", grant_post)
     code = parse_qs(urlparse(grant_response.url).query)["code"][0]
-    token_response = client.post(
+
+    backend_client = Client()
+    token_response = backend_client.post(
         "/o/token/",
         {
             "grant_type": "authorization_code",
@@ -174,6 +182,36 @@ def test_token_exchange_returns_access_token(client, alice, mock_wies, authorize
     body = response.json()
     assert "access_token" in body
     assert AccessToken.objects.filter(token=body["access_token"], user=alice).exists()
+
+
+def test_reauthorize_with_subset_updates_existing_consent(client, alice, mock_wies, authorize_params):
+    """Bestaande actieve consent + nieuwe authorize met subset → granted_fields wordt overschreven."""
+    Consent.objects.create(
+        user=alice,
+        application=mock_wies,
+        granted_fields=list(mock_wies.requested_fields),
+    )
+
+    client.force_login(alice)
+    grant_post = {k: v for k, v in authorize_params.items() if not k.startswith("_")}
+    grant_post["allow"] = "Authorize"
+    grant_post["granted_field"] = ["naam", "email"]
+    grant_response = client.post("/o/authorize/", grant_post)
+    code = parse_qs(urlparse(grant_response.url).query)["code"][0]
+    token_response = client.post(
+        "/o/token/",
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": authorize_params["redirect_uri"],
+            "client_id": mock_wies.client_id,
+            "client_secret": mock_wies.oauth_app.client_secret,
+            "code_verifier": authorize_params["_verifier"],
+        },
+    )
+    assert token_response.status_code == 200
+    consent = Consent.objects.get(user=alice, application=mock_wies, revoked_at__isnull=True)
+    assert set(consent.granted_fields) == {"naam", "email"}
 
 
 def test_regrant_after_revoke_creates_new_consent_row(client, alice, mock_wies, authorize_params):

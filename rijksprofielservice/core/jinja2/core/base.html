@@ -27,6 +27,10 @@
     .field-inline label { display: inline; font-weight: normal; margin: 0; }
     .notice { background: #fff8d8; border: 1px solid #e6cf6c; border-radius: 3px; padding: 0.6rem 0.8rem; margin: 0 0 1rem; font-size: 0.95rem; }
     img.avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+    footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 0.9rem; color: #666; }
+    footer a { color: #154273; }
+    article.privacy h1 { font-size: 1.5rem; }
+    article.privacy h2 { font-size: 1.15rem; margin-top: 1.5rem; }
   </style>
 </head>
 <body>
@@ -44,5 +48,8 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+  <footer>
+    <a href="{{ url('privacy') }}">Privacyverklaring</a>
+  </footer>
 </body>
 </html>

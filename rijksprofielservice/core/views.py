@@ -125,6 +125,11 @@ def no_access(request):
     )
 
 
+@login_not_required
+def privacy(request):
+    return render(request, "core/privacy.html")
+
+
 def application_list(request):
     apps = Application.objects.select_related("oauth_app").order_by("naam")
     return render(request, "core/application_list.html", {"apps": apps})

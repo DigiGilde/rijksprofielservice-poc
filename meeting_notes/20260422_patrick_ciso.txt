@@ -17,7 +17,6 @@ verhaallijn
 
 [tonen hoe wies eruit ziet met profielfoto's]
 
-
 voordelen:
 - als gebruiker: wil niet op verschillende plekken beheren
 - als developer/organisatie: profielfoto's zijn gevoelig en je wil dat deze zorgvuldig worden opgeslagen en afgehandeld

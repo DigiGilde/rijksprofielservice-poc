@@ -47,11 +47,24 @@ class ProfielserviceAuthorizationView(AuthorizationView):
         if form.cleaned_data.get("allow"):
             client_id = form.cleaned_data.get("client_id")
             app = Application.objects.filter(oauth_app__client_id=client_id).first()
-            allowed = set(app.requested_fields or []) if app else set()
-            selected = [f for f in self.request.POST.getlist("granted_field") if f in allowed]
+            allowed = list(app.requested_fields or []) if app else []
+            allowed_set = set(allowed)
+            selected = [f for f in self.request.POST.getlist("granted_field") if f in allowed_set]
             if not selected:
                 # Alles uitgevinkt → behandel als 'Weigeren': stille deny.
                 form.cleaned_data["allow"] = False
-            else:
-                self.request.session[f"pending_consent_fields:{client_id}"] = selected
+            elif app and self.request.user.is_authenticated:
+                # Schrijf de Consent direct weg. De signal-handler kan niet aan deze
+                # browser-session (token-exchange gebeurt server-to-server), dus
+                # daar weten we de selectie niet meer.
+                ordered = [f for f in allowed if f in selected]
+                consent, created = Consent.objects.get_or_create(
+                    user=self.request.user,
+                    application=app,
+                    revoked_at=None,
+                    defaults={"granted_fields": ordered},
+                )
+                if not created and consent.granted_fields != ordered:
+                    consent.granted_fields = ordered
+                    consent.save(update_fields=["granted_fields"])
         return super().form_valid(form)
