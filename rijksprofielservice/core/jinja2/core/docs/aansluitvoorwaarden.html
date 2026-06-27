@@ -1,0 +1,22 @@
+{% extends "core/docs/_layout.html" %}
+{% block title %}Aansluitvoorwaarden · Rijksprofielservice{% endblock %}
+{% block doc_body %}
+<article class="privacy">
+<h1>Aansluitvoorwaarden</h1>
+<h2>Waarom deze voorwaarden bestaan</h2>
+<p>De profielservice deelt persoonsgegevens van ambtenaren met aangesloten apps op basis van expliciete toestemming. Die toestemming is alleen iets waard als de afnemer-app zich gedraagt zoals de ambtenaar mag verwachten: alleen gebruiken wat nodig is, niet doorgeven, en niet een eigen kopie aanleggen.</p>
+<p>De voorwaarden hieronder zijn de basis waarop het vertrouwensmodel rust. Wordt hier niet aan voldaan dan kan de toestemming worden ingetrokken.</p>
+<h2>Voorwaarden</h2>
+<ol>
+<li>
+<p><strong>Geen lokale kopie van profielgegevens.</strong> De app slaat de opgehaalde velden niet op in eigen database of cache met lange levensduur. Gegevens worden bij elke nodige weergave opnieuw via de API opgehaald. Een korte request-scoped cache (binnen één HTTP-request of korte sessie-cache van enkele minuten) is acceptabel; persistente opslag niet. Reden: één bron van waarheid, en intrekken van toestemming of uit-dienst-treding werkt direct door. (data bij de bron)</p>
+</li>
+<li>
+<p><strong>Werkt zonder toestemming.</strong> Als de ambtenaar (nog) geen toestemming heeft gegeven of de toestemming heeft ingetrokken, blijft de app functioneren. De profielverrijking is een <em>plus</em>, geen <em>vereiste</em>. Geen blokkerende schermen, geen &quot;geef eerst toestemming voordat je verder kunt&quot;.</p>
+</li>
+<li>
+<p><strong>Incidentmelding.</strong> Bij een vermoeden van een datalek, gecompromitteerde client-secret, of misbruik van de API meldt de afnemer dit binnen 24 uur bij de beheerder van de profielservice.</p>
+</li>
+</ol>
+</article>
+{% endblock %}

@@ -16,7 +16,7 @@ Voor de ambtenaar: één keer invullen, overal up-to-date. Voor de app-bouwer: g
 
 ## Aantoonbare vraag
 
-De volgende apps van het Digi Gilde zijn directe kandidaten — allemaal applicaties (sommige al in gebruik / anderen in ontwikkeling) die profijt hebben van een profielservice:
+De volgende apps van het Digi Gilde hebben profijt van een profielservice. Deze applicaties zijn nog niet allemaal in gebruik:
 
 - **Wies**
 - **ZAD**

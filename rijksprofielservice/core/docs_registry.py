@@ -12,6 +12,20 @@ DOCS = [
         "target": "rijksprofielservice/core/jinja2/core/docs/business_case.html",
         "template": "core/docs/business_case.html",
     },
+    {
+        "slug": "uit-dienst-treding",
+        "title": "Uit-dienst-treding",
+        "source": "docs/uit_dienst_treding.md",
+        "target": "rijksprofielservice/core/jinja2/core/docs/uit_dienst_treding.html",
+        "template": "core/docs/uit_dienst_treding.html",
+    },
+    {
+        "slug": "aansluitvoorwaarden",
+        "title": "Aansluitvoorwaarden",
+        "source": "docs/aansluitvoorwaarden.md",
+        "target": "rijksprofielservice/core/jinja2/core/docs/aansluitvoorwaarden.html",
+        "template": "core/docs/aansluitvoorwaarden.html",
+    },
 ]
 
 

@@ -1,0 +1,97 @@
+{% extends "core/docs/_layout.html" %}
+{% block title %}Uit-dienst-treding · Rijksprofielservice{% endblock %}
+{% block doc_body %}
+<article class="privacy">
+<h1>Uit-dienst-treding</h1>
+<h2>Het probleem</h2>
+<p>Profielen zijn gekoppeld aan het Rijks-SSO subject-ID. Als een ambtenaar uit dienst gaat, wordt die in Rijks-SSO gedeactiveerd — maar de profielservice krijgt daarvan <strong>geen direct signaal</strong>. Keycloak zit als broker tussen Rijks-SSO en de afnemer-apps, en SCIM is niet beschikbaar.</p>
+<p>Zonder opruimstrategie blijven profielen van ex-ambtenaren in de service staan. Dat is in strijd met de AVG (geen grondslag meer), vervuilt de data van afnemer-apps, en is door de CISO expliciet aangemerkt als governance-gat.</p>
+<p>Tegelijk is hard-delete op een zwak signaal risicovol: iemand met langdurig verlof (ouderschap, ziekte, detachering) is nog wel in dienst.</p>
+<h2>Uitgangspunten</h2>
+<ol>
+<li><strong>Activiteit, niet aanwezigheid, is het signaal.</strong> Elke succesvolle authenticatie via een aangesloten app (inclusief de profielservice zelf) is bewijs dat Rijks-SSO de user nog steeds authenticeert.</li>
+<li><strong>Inactief ≠ verwijderd.</strong> Inactiviteit is een zachte, reversibele toestand. Hard-delete komt pas veel later en is destructief.</li>
+<li><strong>Idempotent herstel.</strong> Als een inactieve user terugkomt, werkt alles weer zonder handmatige tussenkomst.</li>
+<li><strong>De profielservice is een verrijkingslaag.</strong> Afnemer-apps (Wies, AMT) hebben een eigen user-administratie en eigen bewaartermijn. Als de profielservice een profiel niet meer levert, blijft de collega in de app gewoon zichtbaar — alleen zonder verrijking (avatar, functietitel).</li>
+</ol>
+<h2>Wat tellen we als activiteit?</h2>
+<p>Elke API-call die de profielservice afhandelt voor subject-ID X met een geldig token is bewijs dat X recent is ingelogd bij de aanroepende app. Bij iedere zulke call wordt <code>last_seen_at</code> voor X bijgewerkt.</p>
+<pre><code>Ambtenaar A logt in bij Wies (via SSO Rijk → Keycloak)
+  → Wies krijgt id_token met subject-ID van A
+  → Wies doet API-call naar profielservice
+  → Profielservice: UPDATE profiles SET last_seen_at = NOW() WHERE subject_id = 'A'
+</code></pre>
+<h2>De twee drempels</h2>
+<pre><code>                   ┌─────────────┐
+                   │    actief   │
+                   └──────┬──────┘
+                          │
+                   90 dagen geen activiteit
+                          │
+                          ▼
+                   ┌─────────────┐
+                   │  inactief   │ ←── reversibel
+                   └──────┬──────┘     (herlogin = weer actief)
+                          │
+                   2 jaar geen activiteit
+                          │
+                          ▼
+                   ┌─────────────┐
+                   │  verwijderd │ ←── destructief
+                   └─────────────┘     (cascade: consents, avatar, audit)
+</code></pre>
+<h3>Drempel 1 — Inactief (90 dagen)</h3>
+<p>Na 90 dagen zonder activiteit wordt een profiel gemarkeerd als <strong>inactief</strong>. Het record blijft volledig intact (alle velden, consent-records, avatar). Wat verandert is de zichtbaarheid voor afnemer-apps:</p>
+<table>
+<thead>
+<tr>
+<th>Type call</th>
+<th>Voorbeeld</th>
+<th>Inactief profiel zichtbaar?</th>
+<th>Reset <code>marked_inactive_at</code>?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ambtenaar haalt eigen profiel op</td>
+<td>Ambtenaar opent Wies → Wies vraagt eigen profiel</td>
+<td><strong>Ja</strong></td>
+<td>Ja</td>
+</tr>
+<tr>
+<td>Batch over eigen relaties</td>
+<td>Wies vraagt namens de ingelogde ambtenaar teamprofielen</td>
+<td><strong>Ja</strong> voor de aanroepende ambtenaar zelf</td>
+<td>Alleen voor de aanroeper</td>
+</tr>
+<tr>
+<td>Batch over andermans relaties</td>
+<td>Profiel van inactieve collega A zit in batch namens B</td>
+<td><strong>Nee</strong> — A wordt weggelaten</td>
+<td>Nee</td>
+</tr>
+<tr>
+<td>Losse lookup van een ander</td>
+<td>App vraagt direct profiel van A op terwijl B is ingelogd</td>
+<td><strong>Nee</strong> — 404</td>
+<td>Nee</td>
+</tr>
+</tbody>
+</table>
+<p>Kortom: een inactieve user kan zichzelf altijd reactiveren door simpelweg in te loggen bij een aangesloten app. Collega's &quot;zien&quot; het profiel pas weer nadat de user dat zelf heeft gedaan. Een passieve batch-call door iemand anders is niet genoeg om een inactief profiel ongemerkt terug te brengen naar actief.</p>
+<h3>Drempel 2 — Hard-delete (2 jaar)</h3>
+<p>Na 2 jaar zonder activiteit wordt het profiel <strong>verwijderd</strong>. Cascade:</p>
+<ul>
+<li>Profielrecord, consent-records en avatar-blob worden verwijderd.</li>
+<li>Audit-log entry wordt geschreven (los van het profiel bewaard).</li>
+</ul>
+<p>Als dezelfde subject-ID later weer opduikt (bv. iemand komt na 3 jaar terug bij het Rijk), wordt die behandeld als <strong>nieuwe gebruiker</strong>: consents zijn weg, avatar is weg, toestemmingen moeten opnieuw worden gegeven. Acceptabel, omdat 2 jaar inactiviteit bij een rijksambtenaar een sterke indicatie is dat de arbeidsrelatie is beëindigd.</p>
+<h2>Mogelijke uitbreidingen</h2>
+<p>Onderdelen die nuttig zijn maar niet in de eerste implementatie zitten:</p>
+<ul>
+<li><strong>Waarschuwingsmails</strong> op 90 dagen en ±21 maanden, zodat de ambtenaar kan ingrijpen vóór hard-delete. Vereist een betrouwbaar e-mailkanaal en stale-adres-afhandeling.</li>
+<li><strong>Webhook naar afnemer-apps</strong> bij hard-delete (<code>{&quot;event&quot;: &quot;profile_deleted&quot;, &quot;subject_id&quot;: &quot;...&quot;}</code>) zodat zij hun caches/kopieën kunnen opruimen. Vereist een webhook-contract en intrekkings-/retry-beleid per afnemer.</li>
+<li><strong>Hard signaal vanuit Rijks-SSO</strong>: als Rijks-SSO in de toekomst een lookup of SCIM-feed biedt, kan bevestiging &quot;user is weg&quot; direct naar de verwijderd-status leiden zonder op 2 jaar te wachten.</li>
+</ul>
+</article>
+{% endblock %}

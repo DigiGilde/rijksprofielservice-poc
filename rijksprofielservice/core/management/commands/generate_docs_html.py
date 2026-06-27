@@ -14,7 +14,7 @@ from rijksprofielservice.core.docs_registry import DOCS
 
 
 def _build_renderer() -> MarkdownIt:
-    md = MarkdownIt("commonmark")
+    md = MarkdownIt("commonmark").enable("table")
     default_link_open = md.renderer.rules.get(
         "link_open",
         lambda tokens, idx, options, env: md.renderer.renderToken(tokens, idx, options, env),

@@ -75,11 +75,20 @@ Ambtenaar A logt in bij Wies (via SSO Rijk → Keycloak)
 Na 90 dagen zonder activiteit wordt een profiel als **inactief** gemarkeerd (veld `marked_inactive_at`). Wat dat inhoudt:
 
 - Het record blijft bestaan. Alle velden, consent-records en avatar blijven staan.
-- Afnemer-apps krijgen het profiel nog gewoon terug op een API-call (de user kán immers terugkomen).
+- Zichtbaarheid voor afnemer-apps hangt af van **wie de subject van de call is**:
+
+  | Type call | Voorbeeld | Inactief profiel zichtbaar? | Effect op `marked_inactive_at` |
+  |-----------|-----------|------------------------------|--------------------------------|
+  | Ambtenaar haalt eigen profiel op (subject van de call = profiel-eigenaar) | Ambtenaar opent Wies → Wies vraagt het eigen profiel op | **Ja** | Wordt gereset (profiel weer actief) |
+  | Batch-call namens een ambtenaar over diens eigen relaties | Wies vraagt namens de ingelogde ambtenaar de profielen van diens team op | **Ja** voor het profiel van de aanroepende ambtenaar zelf, en reset diens vlag | Reset alleen voor de aanroepende ambtenaar; inactieve collega's blijven onzichtbaar |
+  | Batch-call over andermans relaties | Wies vraagt teamprofielen op voor ambtenaar B; profiel van inactieve collega A zit in de batch | **Nee** — A wordt stilletjes weggelaten | Geen reset |
+  | Lookup van losse andere ambtenaar | App vraagt direct het profiel van A op terwijl B is ingelogd | **Nee** — 404 | Geen reset |
+
+  Kortom: de inactieve user kan zichzelf altijd reactiveren door simpelweg in te loggen bij een aangesloten app; collega's "zien" diens profiel pas weer nadat de user dat zelf heeft gedaan. Dit voorkomt dat een passieve batch-call door iemand anders genoeg is om een inactief profiel ongemerkt terug te brengen naar actief.
 - Er kan optioneel een waarschuwings-e-mail richting de ambtenaar gaan ("we hebben je al 90 dagen niet gezien — je profiel wordt na 2 jaar verwijderd").
 - Op een interne dashboard/admin-view zichtbaar als "inactief sinds".
 
-Bij een volgende activiteit (ambtenaar logt weer in via een van de apps): `marked_inactive_at` wordt op `NULL` gezet, `last_seen_at` wordt geüpdatet. Geen verdere actie nodig. De user is weer gewoon actief.
+**Waarom onzichtbaar maken al bij inactief, niet pas bij hard-delete?** De profielservice is een **verrijkingslaag** bovenop de eigen user-administratie van de afnemer-app. Een afnemer-app (Wies, AMT) heeft zelf een lijst van gebruikers en moet bruikbaar blijven zonder de verrijking — geen avatar, geen functietitel uit de profielservice, maar de collega is in de app niet "verdwenen". De app heeft daarnaast haar eigen bewaartermijn voor die basisgegevens. Door inactieve profielen niet meer te leveren halen we onnodige persoonsgegevens uit de afnemer-flows zodra het signaal "deze ambtenaar is mogelijk weg" ontstaat, zonder dat dat de werking van de app breekt. Bij ouderschapsverlof of detachering blijft de collega gewoon in de teamlijst van Wies staan — alleen zonder de verrijkte velden, totdat 'ie weer inlogt.
 
 ### Drempel 2 — Hard-delete (voorstel: 2 jaar)
 
@@ -95,10 +104,10 @@ Na hard-delete: als dezelfde subject-ID ooit weer opduikt in een login (bv. omda
 
 | Drempel | Doel | Risico bij te kort | Risico bij te lang |
 |---------|------|--------------------|--------------------|
-| 90 dagen (inactief-vlag) | Vroegsignalering, governance-dashboard, herinneringsmail | Onnodige flags bij normale verlofpatronen | Geen — vlag is reversibel |
+| 90 dagen (inactief-vlag) | Verrijking stoppen, vroegsignalering, governance-dashboard, herinneringsmail | Onnodige flags bij normale verlofpatronen (apps vallen terug op basis-weergave) | Onnodig lang verrijken van mogelijk-ex-ambtenaren |
 | 2 jaar (hard-delete) | Privacy-compliance, dataminimalisatie | Terugkerende ambtenaar moet opnieuw consent geven | Onnodig lang bewaren van persoonsgegevens |
 
-Belangrijk: de 90-dagen-vlag is bewust **niet** destructief. Die bestaat puur om beheer en governance te ondersteunen, en om de gebruiker een heads-up te kunnen geven. Alleen de 2-jaar-drempel is irreversibel.
+Belangrijk: de 90-dagen-vlag is bewust **niet** destructief. Het profielrecord blijft volledig intact en herstelt zichzelf bij de eerstvolgende login. Alleen de 2-jaar-drempel is irreversibel.
 
 ## Zwakte van deze aanpak
 
