@@ -31,6 +31,19 @@
     footer a { color: #154273; }
     article.privacy h1 { font-size: 1.5rem; }
     article.privacy h2 { font-size: 1.15rem; margin-top: 1.5rem; }
+    .docs-layout { display: flex; gap: 1.25rem; align-items: flex-start; }
+    .docs-sidebar { flex: 0 0 8rem; font-size: 0.9rem; border-right: 1px solid #eee; padding-right: 0.75rem; }
+    .docs-sidebar h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #666; margin: 0 0 0.5rem; }
+    .docs-sidebar ul { list-style: none; padding: 0; margin: 0; }
+    .docs-sidebar li { margin: 0.25rem 0; }
+    .docs-sidebar a { color: #154273; text-decoration: none; }
+    .docs-sidebar a:hover { text-decoration: underline; }
+    .docs-sidebar a[aria-current="page"] { font-weight: 600; color: #1a1a1a; }
+    .docs-content { flex: 1 1 auto; min-width: 0; }
+    @media (max-width: 640px) {
+      .docs-layout { flex-direction: column; }
+      .docs-sidebar { flex: none; border-right: 0; border-bottom: 1px solid #eee; padding: 0 0 0.75rem; width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -50,6 +63,7 @@
   </main>
   <footer>
     <a href="{{ url('privacy') }}">Privacyverklaring</a>
+    · <a href="{{ url('docs-index') }}">Docs</a>
   </footer>
 </body>
 </html>

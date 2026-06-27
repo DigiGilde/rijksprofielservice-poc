@@ -1,0 +1,42 @@
+{% extends "core/docs/_layout.html" %}
+{% block title %}Business case · Rijksprofielservice{% endblock %}
+{% block doc_body %}
+<article class="privacy">
+<h1>Business case</h1>
+<h2>Waarom dit nodig is</h2>
+<p>Vanuit het Digi Gilde worden er verschillende webapplicaties ontwikkeld waarin gebruikers (ambtenaren) samenwerken. Voor deze applicaties is het waardevol om profielinformatie van collega's te kunnen zien (naam, e-mail, telefoonnummer, functie, foto). Enerzijds voor de herkenning, anderzijds voor snel contact.</p>
+<p>Als gebruiker is het storend om deze informatie herhaardelijk in toe moeten voeren en bij te houden bij wijzigingen. Daarnaast is het voor de ontwikkelaars niet makkelijk om te voldoen aan de privacy regels, wat hen belemmert deze informatie toe te voegen.</p>
+<p>Dit is een mooie kans. Door op een gecontroleerde manier profielinformatie te delen wordt samenwerking bevorderd en kunnnen we effectievere digitale tools realiseren.</p>
+<h2>Wat de profielservice doet</h2>
+<p>Eén plek waar een ambtenaar zijn profiel beheert. Eén API waar elke aangesloten app dat profiel — en dat van collega's — kan ophalen. Met expliciete toestemming per app, per veld.</p>
+<p>Voor de ambtenaar: één keer invullen, overal up-to-date. Voor de app-bouwer: geen eigen profielscherm meer onderhouden, en collega-profielen gewoon beschikbaar via een batch-call. Daarnaast is de privacy afhandeling afgedekt.</p>
+<h2>Aantoonbare vraag</h2>
+<p>De volgende apps van het Digi Gilde zijn directe kandidaten — allemaal applicaties (sommige al in gebruik / anderen in ontwikkeling) die profijt hebben van een profielservice:</p>
+<ul>
+<li><strong>Wies</strong></li>
+<li><strong>ZAD</strong></li>
+<li><strong>AMT</strong></li>
+<li><strong>Invulhulpen</strong> (pre-DPIA en IAMA)</li>
+<li><strong>Bouwmeester</strong></li>
+<li><strong>Regelrecht-editor</strong></li>
+<li><strong>Grip</strong></li>
+<li><strong>Begane Grond</strong></li>
+</ul>
+<h2>Buiten het Digi Gilde</h2>
+<ul>
+<li><strong>PleinBZK</strong> — gebruikt nu al OAuth om een profielfoto uit LinkedIn op te halen. Dezelfde technische koppeling, alleen dan met een bron die wél van het Rijk is.</li>
+</ul>
+<h2>Verdere mogelijke uitbreidingen (verkenning)</h2>
+<ul>
+<li><strong>Mijn Bureau — chat</strong></li>
+<li><strong>Mijn Bureau — docs</strong></li>
+<li><strong>Mattermost</strong></li>
+</ul>
+<h2>Alternatieven onderzocht</h2>
+<ul>
+<li><strong>Rijksadresgids</strong> — onderzocht als bestaande bron, maar valt af. Het team achter de Rijksadresgids gaf desgevraagd aan geen gegevens te mogen verstrekken: zij zijn niet de eigenaar van de data. De foto in de Rijksadresgids is bijvoorbeeld alleen bedoeld voor de Rijksadresgids zelf, niet om naar andere systemen te synchroniseren. Voor hergebruik moet je bij de medewerker zelf zijn — precies wat de profielservice mogelijk maakt.</li>
+<li><strong>Gravatar</strong> - Dit is een publieke online dienst waar je een profiel kan aanmaken die wordt gematcht op basis van je mailadres. Deze informatie is voor iedereen inzichtelijk en daardoor niet geschikt voor gevoeligere informatie zoals bijvoorbeeld een telefoonnummer</li>
+<li><strong>Keycloak</strong> - Hier kunnen gebruikersprofielen worden aangemaakt, maar is niet geschikt om collega's in op te vragen.</li>
+</ul>
+</article>
+{% endblock %}

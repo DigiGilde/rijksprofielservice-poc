@@ -1,0 +1,21 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h2>Docs</h2>
+    <ul>
+      {% for doc in docs %}
+        <li>
+          <a href="{{ url('docs-detail', kwargs={'slug': doc.slug}) }}"
+             {% if doc.slug == active_slug %}aria-current="page"{% endif %}>
+            {{ doc.title }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </aside>
+  <div class="docs-content">
+    {% block doc_body %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

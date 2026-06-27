@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from oauth2_provider.models import get_application_model
 
+from .docs_registry import DOCS, get_doc
 from .forms import ApplicationCreateForm, ApplicationEditForm, AvatarForm, UserProfileForm
 from .models import Application, Consent, UserProfile
 
@@ -128,6 +129,19 @@ def no_access(request):
 @login_not_required
 def privacy(request):
     return render(request, "core/privacy.html")
+
+
+@login_not_required
+def docs_index(request):
+    return render(request, "core/docs/index.html", {"docs": DOCS, "active_slug": None})
+
+
+@login_not_required
+def docs_detail(request, slug):
+    doc = get_doc(slug)
+    if doc is None:
+        raise Http404
+    return render(request, doc["template"], {"doc": doc, "docs": DOCS, "active_slug": slug})
 
 
 def application_list(request):

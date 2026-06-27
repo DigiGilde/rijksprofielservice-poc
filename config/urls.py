@@ -19,6 +19,8 @@ urlpatterns = [
     path("auth/", auth, name="auth"),
     path("geen-toegang/", core_views.no_access, name="no-access"),
     path("privacy/", core_views.privacy, name="privacy"),
+    path("docs/", core_views.docs_index, name="docs-index"),
+    path("docs/<slug:slug>/", core_views.docs_detail, name="docs-detail"),
     # Profielservice UI
     path("", RedirectView.as_view(pattern_name="profile-edit", permanent=False), name="home"),
     path("profiel/", core_views.profile_edit, name="profile-edit"),
