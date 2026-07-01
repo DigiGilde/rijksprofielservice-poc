@@ -132,7 +132,7 @@ Bij client-credentials authenticatie is er **één token per app**, niet per geb
 
 Bij de Authorization Code + PKCE flow is het token aan een specifieke ambtenaar gekoppeld. Hier valt **consent = grant** samen: het bestaan van een geldig AccessToken voor (gebruiker, app) is op zichzelf bewijs dat toestemming is verleend.
 
-Zie [Integratie-patronen](integratie-patronen.md) voor concrete voorbeelden van hoe afnemer-apps (zoals Django + HTMX) de profielservice integreren.
+Zie [Integratiehandleiding](integratie.md) voor concrete voorbeelden van hoe afnemer-apps (zoals Django + HTMX) de profielservice integreren.
 
 ## SSO-integratie en authenticatie
 

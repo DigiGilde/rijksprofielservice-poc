@@ -1,0 +1,432 @@
+{% extends "core/docs/_layout.html" %}
+{% block title %}Integratiehandleiding · Rijksprofielservice{% endblock %}
+{% block doc_body %}
+{% raw %}
+<article class="privacy">
+<h1>Afnemer-app integreren met de Rijksprofielservice</h1>
+<p>Stap-voor-stap-handleiding met code-voorbeelden tegen de lokale PoC-setup. Vervang <code>mijn-app</code> door je eigen <code>client_id</code>.</p>
+<h2>Wat je krijgt</h2>
+<p>Twee endpoints, twee tokens:</p>
+<ul>
+<li><strong><code>/api/v1/profiles/me</code></strong> met een <strong>user-bound token</strong> (Authorization Code + PKCE) — voor het profiel van de ingelogde gebruiker, plus het <code>subject_id</code> dat je opslaat om diezelfde gebruiker later via batch te kunnen ophalen.</li>
+<li><strong><code>/api/v1/profiles/batch</code></strong> met een <strong>client-credentials token</strong> (M2M) — voor profielen van collega's, op basis van eerder opgeslagen <code>subject_id</code>s.</li>
+</ul>
+<p>Zie <a href="/docs/aansluitvoorwaarden/">aansluitvoorwaarden</a> voor de spelregels rond opslag, toestemming en incidentmelding.</p>
+<h2>Architectuur op één scherm</h2>
+<pre><code>Browser
+   │
+   ▼
+Mijn-app (localhost:8080)             Rijksprofielservice (localhost:8000)
+   │                                  │
+   │  1. user wil eigen profiel       │
+   ├─────────────────────────────────▶│  GET /o/authorize/?response_type=code
+   │                                  │         &amp;client_id=mijn-app
+   │                                  │         &amp;code_challenge=...&amp;state=...
+   │                                  │  → toont consent-scherm
+   │  2. user kiest velden            │
+   │◀─────────────────────────────────┤  302 → /callback?code=...&amp;state=...
+   │                                  │
+   │  3. code → access_token          │
+   ├─────────────────────────────────▶│  POST /o/token/ (authorization_code)
+   │  ◀──────────────────────────────│  { access_token, ... }
+   │                                  │
+   │  4. profiel van ingelogde user   │
+   ├─────────────────────────────────▶│  GET /api/v1/profiles/me  (Bearer)
+   │  ◀──────────────────────────────│  { naam, email, ..., subject_id }
+   │                                  │
+   ────── later, voor collega's ──────
+   │                                  │
+   │  5. M2M token                    │
+   ├─────────────────────────────────▶│  POST /o/token/ (client_credentials,
+   │                                  │       client_id=mijn-app-m2m)
+   │  ◀──────────────────────────────│  { access_token, ... }
+   │                                  │
+   │  6. batch profielen              │
+   ├─────────────────────────────────▶│  POST /api/v1/profiles/batch (Bearer)
+   │  ◀──────────────────────────────│  { &quot;profiles&quot;: { &quot;&lt;sid&gt;&quot;: {...}|null } }
+   │                                  │
+</code></pre>
+<h2>Lokale poorten</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Host-poort</th>
+<th>Doel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Afnemer-app (Django)</td>
+<td><code>8080</code></td>
+<td>Voorbeeld-poort voor de PoC.</td>
+</tr>
+<tr>
+<td>Rijksprofielservice (Django)</td>
+<td><code>8000</code></td>
+<td>Bewust uit de weg van de afnemer.</td>
+</tr>
+<tr>
+<td>Postgres (rijksprofielservice)</td>
+<td><code>5433</code></td>
+<td>Naast standaard 5432 (afnemer).</td>
+</tr>
+</tbody>
+</table>
+<h2>Stap 1 — App registreren via de Applicaties-pagina</h2>
+<p>Ga in de profielservice naar <a href="http://localhost:8000/applicaties/nieuw/" target="_blank" rel="noopener"><code>/applicaties/nieuw/</code></a> en vul het formulier in:</p>
+<ul>
+<li><strong>Naam</strong>: <code>Mijn-app</code></li>
+<li><strong>Client id</strong>: <code>mijn-app</code> (zonder <code>-m2m</code>-suffix; die wordt automatisch aangemaakt)</li>
+<li><strong>Beschrijving</strong>: bv. <code>Voorbeeld-applicatie voor de PoC.</code></li>
+<li><strong>Redirect uri</strong>: <code>http://localhost:8080/profielservice/callback/</code></li>
+<li><strong>Requested fields</strong>: vink de profielvelden aan die je app nodig heeft (bv. naam, email, functie)</li>
+<li><strong>Is approved</strong>: ✓</li>
+</ul>
+<p>Eén submit maakt drie records aan:</p>
+<ol>
+<li>Een OAuth-client met <code>client_id=mijn-app</code>, grant type <code>authorization-code</code>, met je <code>redirect_uri</code>. Voor de user-flow.</li>
+<li>Een OAuth-client met <code>client_id=mijn-app-m2m</code>, grant type <code>client-credentials</code>, zonder <code>redirect_uri</code>. Voor de batch-API.</li>
+<li>Een business-<code>Application</code>-record met <code>requested_fields</code> en <code>is_approved</code>. De profielservice gebruikt dit om consent-schermen te tonen en API-antwoorden te filteren.</li>
+</ol>
+<p>Beide <code>client_secret</code>s worden automatisch gegenereerd en zijn zichtbaar op de edit-pagina van de net aangemaakte app. Bewaar ze veilig — ze worden alleen daar getoond, niet opnieuw afgeleid.</p>
+<p>De naam-conventie is bewust: client-credentials gebruikt altijd <code>&lt;client_id&gt;-m2m</code>. De profielservice gebruikt die suffix om de M2M-token aan de business-app te koppelen.</p>
+<h2>Stap 2 — Authorization Code flow met PKCE</h2>
+<p>PKCE is verplicht. Genereer per request een <code>code_verifier</code> en stuur de bijbehorende <code>code_challenge</code> mee in de authorize-redirect.</p>
+<pre><code class="language-python"># mijn_app/views.py — voorbeeld
+import base64
+import hashlib
+import secrets
+from urllib.parse import urlencode
+
+from django.conf import settings
+from django.shortcuts import redirect
+
+AUTHORIZE_URL = &quot;http://localhost:8000/o/authorize/&quot;
+CALLBACK_URL = &quot;http://localhost:8080/profielservice/callback/&quot;
+CLIENT_ID = &quot;mijn-app&quot;
+
+
+def _pkce_pair():
+    verifier = secrets.token_urlsafe(64)
+    challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode()).digest()
+    ).rstrip(b&quot;=&quot;).decode()
+    return verifier, challenge
+
+
+def vraag_profiel_toestemming(request):
+    state = secrets.token_urlsafe(16)
+    verifier, challenge = _pkce_pair()
+    request.session[&quot;profielservice_state&quot;] = state
+    request.session[&quot;profielservice_verifier&quot;] = verifier
+    params = {
+        &quot;response_type&quot;: &quot;code&quot;,
+        &quot;client_id&quot;: CLIENT_ID,
+        &quot;redirect_uri&quot;: CALLBACK_URL,
+        &quot;scope&quot;: &quot;read_profile&quot;,
+        &quot;state&quot;: state,
+        &quot;code_challenge&quot;: challenge,
+        &quot;code_challenge_method&quot;: &quot;S256&quot;,
+    }
+    return redirect(f&quot;{AUTHORIZE_URL}?{urlencode(params)}&quot;)
+</code></pre>
+<p>De profielservice toont een consent-scherm met checkboxes per veld uit <code>requested_fields</code>. De gebruiker kan velden uitvinken — alleen aangevinkte velden komen later terug in API-responses. Alles uitvinken telt als stille deny (geen <code>code</code> in de callback).</p>
+<h3>Callback verwerken en token ophalen</h3>
+<pre><code class="language-python"># mijn_app/views.py — voorbeeld
+import httpx
+from django.http import HttpResponseBadRequest
+from django.shortcuts import redirect
+
+TOKEN_URL = &quot;http://host.docker.internal:8000/o/token/&quot;  # back-channel
+CLIENT_SECRET = settings.MIJN_APP_CLIENT_SECRET
+
+
+def profielservice_callback(request):
+    state = request.GET.get(&quot;state&quot;, &quot;&quot;)
+    expected = request.session.pop(&quot;profielservice_state&quot;, None)
+    verifier = request.session.pop(&quot;profielservice_verifier&quot;, None)
+    if not expected or expected != state:
+        return HttpResponseBadRequest(&quot;State-mismatch&quot;)
+
+    code = request.GET.get(&quot;code&quot;)
+    if not code:
+        return render(request, &quot;mijn_app/toestemming_geweigerd.html&quot;)
+
+    response = httpx.post(
+        TOKEN_URL,
+        data={
+            &quot;grant_type&quot;: &quot;authorization_code&quot;,
+            &quot;code&quot;: code,
+            &quot;redirect_uri&quot;: CALLBACK_URL,
+            &quot;client_id&quot;: CLIENT_ID,
+            &quot;client_secret&quot;: CLIENT_SECRET,
+            &quot;code_verifier&quot;: verifier,
+        },
+        timeout=5,
+    )
+    response.raise_for_status()
+    access_token = response.json()[&quot;access_token&quot;]
+    # Bewaar het token in de sessie, of haal er meteen /me mee op (volgende stap).
+    request.session[&quot;profielservice_token&quot;] = access_token
+    return redirect(&quot;mijn_app:dashboard&quot;)
+</code></pre>
+<h2>Stap 3 — <code>/api/v1/profiles/me</code> aanroepen</h2>
+<p>Het user-bound token geeft toegang tot het eigen profiel van de ingelogde gebruiker. De response bevat naast de profielvelden ook <code>subject_id</code> als metadata — sla die op aan je eigen User-model, zodat je dezelfde persoon later via de batch-API kunt opzoeken (ook in een ander request waar de user niet aanwezig is).</p>
+<pre><code class="language-python">def fetch_eigen_profiel(token: str) -&gt; dict:
+    response = httpx.get(
+        &quot;http://host.docker.internal:8000/api/v1/profiles/me&quot;,
+        headers={&quot;Authorization&quot;: f&quot;Bearer {token}&quot;},
+        timeout=5,
+    )
+    response.raise_for_status()
+    return response.json()
+</code></pre>
+<p>Voorbeeld-response:</p>
+<pre><code class="language-json">{
+  &quot;naam&quot;: &quot;Diana Bos&quot;,
+  &quot;email&quot;: &quot;diana.bos@rijksoverheid.nl&quot;,
+  &quot;functie&quot;: &quot;Beleidsmedewerker&quot;,
+  &quot;subject_id&quot;: &quot;demo-sub-diana&quot;
+}
+</code></pre>
+<p>Met curl:</p>
+<pre><code class="language-sh">curl -H &quot;Authorization: Bearer &lt;access_token&gt;&quot; \
+     http://localhost:8000/api/v1/profiles/me
+</code></pre>
+<h2>Stap 4 — M2M-token en batch-API</h2>
+<p>Voor profielen van collega's gebruik je de M2M-client. Vraag een client-credentials token aan, cache het tot vlak voor expiry, en stuur er batch-requests mee.</p>
+<pre><code class="language-python"># mijn_app/profielservice_client.py — voorbeeld
+import time
+import httpx
+from django.conf import settings
+
+TOKEN_URL = &quot;http://host.docker.internal:8000/o/token/&quot;
+BATCH_URL = &quot;http://host.docker.internal:8000/api/v1/profiles/batch&quot;
+M2M_CLIENT_ID = &quot;mijn-app-m2m&quot;
+
+_token_cache = {&quot;token&quot;: None, &quot;expires_at&quot;: 0.0}
+
+
+def get_m2m_token() -&gt; str:
+    if _token_cache[&quot;expires_at&quot;] &gt; time.time() + 30:
+        return _token_cache[&quot;token&quot;]
+    response = httpx.post(
+        TOKEN_URL,
+        data={
+            &quot;grant_type&quot;: &quot;client_credentials&quot;,
+            &quot;client_id&quot;: M2M_CLIENT_ID,
+            &quot;client_secret&quot;: settings.MIJN_APP_M2M_CLIENT_SECRET,
+        },
+        timeout=5,
+    )
+    response.raise_for_status()
+    data = response.json()
+    _token_cache[&quot;token&quot;] = data[&quot;access_token&quot;]
+    _token_cache[&quot;expires_at&quot;] = time.time() + data[&quot;expires_in&quot;]
+    return data[&quot;access_token&quot;]
+
+
+def haal_profielen(subject_ids: list[str]) -&gt; dict:
+    &quot;&quot;&quot;Haal meerdere profielen in één call.
+
+    Response shape: {&quot;&lt;sid&gt;&quot;: {...velden...} | None}.
+    `None` betekent: onbekend subject OF geen actieve consent voor deze app.
+    &quot;&quot;&quot;
+    response = httpx.post(
+        BATCH_URL,
+        json={&quot;subject_ids&quot;: subject_ids},
+        headers={&quot;Authorization&quot;: f&quot;Bearer {get_m2m_token()}&quot;},
+        timeout=5,
+    )
+    response.raise_for_status()
+    return response.json()[&quot;profiles&quot;]
+</code></pre>
+<p>Voorbeeld-response:</p>
+<pre><code class="language-json">{
+  &quot;profiles&quot;: {
+    &quot;demo-sub-kevin&quot;: {
+      &quot;naam&quot;: &quot;Kevin Popov&quot;,
+      &quot;email&quot;: &quot;kevin.popov@rijksoverheid.nl&quot;,
+      &quot;functie&quot;: &quot;Adviseur&quot;,
+      &quot;avatar_url&quot;: &quot;http://localhost:8000/avatars/6.jpg&quot;
+    },
+    &quot;demo-sub-onbekend&quot;: null
+  }
+}
+</code></pre>
+<p>Met curl (met seed-secret uit <code>seed_apps.json</code>):</p>
+<pre><code class="language-sh">TOKEN=$(curl -s -X POST http://localhost:8000/o/token/ \
+  -d grant_type=client_credentials \
+  -d client_id=wies-m2m \
+  -d client_secret=local-dev-secret-wies | python -c 'import sys,json;print(json.load(sys.stdin)[&quot;access_token&quot;])')
+
+curl -X POST http://localhost:8000/api/v1/profiles/batch \
+  -H &quot;Authorization: Bearer $TOKEN&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;subject_ids&quot;:[&quot;demo-sub-kevin&quot;,&quot;demo-sub-diana&quot;]}'
+</code></pre>
+<p>Velden in de response zijn de doorsnijding van <code>Application.requested_fields</code> ∩ <code>Consent.granted_fields</code>. Wijzigt de gebruiker zijn consent, dan past de response zich direct aan.</p>
+<h2>Foutgevallen</h2>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Betekenis</th>
+<th>Wat te doen</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>400</td>
+<td>Onbekende <code>client_id</code>, ongeldige <code>redirect_uri</code>, ontbrekende/onjuiste PKCE-parameters bij <code>/o/authorize/</code>.</td>
+<td>Check de app-registratie en je PKCE-paar.</td>
+</tr>
+<tr>
+<td>400</td>
+<td><code>subject_ids</code> is geen lijst bij batch-call.</td>
+<td>Stuur een JSON-array.</td>
+</tr>
+<tr>
+<td>401</td>
+<td>Token ontbreekt, ongeldig, of verlopen.</td>
+<td>Vernieuw het token.</td>
+</tr>
+<tr>
+<td>403</td>
+<td>App is niet goedgekeurd (<code>is_approved=false</code>), verkeerd token-type voor het endpoint (user-token op <code>/batch</code> of M2M-token op <code>/me</code>), of geen actieve consent voor de ingelogde user (<code>/me</code>).</td>
+<td>Vraag de beheerder om goedkeuring; gebruik het juiste token-type; vraag de user opnieuw toestemming.</td>
+</tr>
+<tr>
+<td>404</td>
+<td>Onbekend <code>subject_id</code> bij <code>/api/v1/profiles/&lt;id&gt;</code>.</td>
+<td>User bestaat niet. (Batch geeft <code>null</code> in plaats van 404.)</td>
+</tr>
+</tbody>
+</table>
+<h2>Integratiepatronen voor UI-rendering</h2>
+<p>Hieronder concrete patronen voor het renderen van schermen met profielgegevens — met Django + HTMX als voorbeeld, maar het idee werkt voor elke server-side stack.</p>
+<h3>Server-side rendering en het blokkeringsprobleem</h3>
+<p>Bij server-side rendering moet de server de volledige HTML genereren voordat de pagina naar de browser gaat. Als een app bij het renderen van een teamoverzicht eerst 20 profielen moet ophalen, blokkeert dat de hele pageload:</p>
+<pre><code>Gebruiker klikt ──&gt; App-server ──&gt; wacht op 20 profielen (200ms) ──&gt; rendert HTML ──&gt; browser
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                   dit blokkeert de hele pagina
+</code></pre>
+<h3>Lazy loading met HTMX</h3>
+<p>HTMX biedt een patroon met <code>hx-get</code> en <code>hx-trigger=&quot;load&quot;</code>. De pagina rendert direct met placeholders, en HTMX verrijkt de profielen asynchroon:</p>
+<pre><code class="language-html">&lt;!-- Pagina rendert direct, geen profielservice-calls nodig --&gt;
+&lt;div class=&quot;team-overzicht&quot;&gt;
+  {% for subject_id in team_subject_ids %}
+    &lt;div hx-get=&quot;{% url 'profiel-card' subject_id %}&quot;
+         hx-trigger=&quot;load&quot;
+         hx-swap=&quot;outerHTML&quot;&gt;
+      &lt;!-- Placeholder: toont direct, wordt vervangen door HTMX --&gt;
+      &lt;div class=&quot;profiel-card placeholder&quot;&gt;
+        &lt;div class=&quot;avatar-placeholder&quot;&gt;{{ subject_id|initialen }}&lt;/div&gt;
+        &lt;span class=&quot;naam-placeholder&quot;&gt;Laden...&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  {% endfor %}
+&lt;/div&gt;
+</code></pre>
+<pre><code class="language-python">def profiel_card(request, subject_id):
+    &quot;&quot;&quot;Haalt profiel op bij de profielservice en retourneert een HTML-fragment.&quot;&quot;&quot;
+    profielen = haal_profielen([subject_id])
+    profiel = profielen.get(subject_id)
+    if profiel is None:
+        return render(request, &quot;partials/profiel_card_fallback.html&quot;,
+                      {&quot;subject_id&quot;: subject_id})
+    return render(request, &quot;partials/profiel_card.html&quot;, {&quot;profiel&quot;: profiel})
+</code></pre>
+<h3>Batch in plaats van N requests</h3>
+<p>Individuele requests per card zijn eenvoudig maar bij 20 teamleden zijn dat 20 backend-roundtrips. Twee betere opties:</p>
+<p><strong>Optie 1 — Eén batch-call, alle fragmenten in één response:</strong></p>
+<pre><code class="language-html">&lt;div hx-get=&quot;{% url 'team-profielen' team_id %}&quot;
+     hx-trigger=&quot;load&quot;
+     hx-swap=&quot;innerHTML&quot;&gt;
+  {% for sid in team_subject_ids %}
+    &lt;div id=&quot;profiel-{{ sid }}&quot; class=&quot;profiel-card placeholder&quot;&gt;...&lt;/div&gt;
+  {% endfor %}
+&lt;/div&gt;
+</code></pre>
+<pre><code class="language-python">def team_profielen(request, team_id):
+    subject_ids = Team.objects.get(id=team_id).leden_subject_ids()
+    profielen = haal_profielen(subject_ids)
+    return render(request, &quot;partials/team_profielen.html&quot;,
+                  {&quot;profielen&quot;: profielen})
+</code></pre>
+<p><strong>Optie 2 — Individuele cards, maar backend batcht intern:</strong>
+Bij de eerste card-request doet de backend één batch-call voor alle team-<code>subject_id</code>s en houdt het resultaat in een korte in-memory cache (zie hieronder). De overige 19 requests worden uit de cache beantwoord.</p>
+<h3>Korte cache aan afnemer-kant</h3>
+<p>Een korte in-memory cache (Redis/memcached, 5 min TTL) is acceptabel als versnelling. Een persistente kopie in de eigen database is dat niet — zie de <a href="/docs/aansluitvoorwaarden/">aansluitvoorwaarden</a> voor de afspraken rond dataopslag.</p>
+<pre><code class="language-python">from django.core.cache import cache
+
+def get_profiel_cached(subject_id: str):
+    key = f&quot;profiel:{subject_id}&quot;
+    profiel = cache.get(key)
+    if profiel is None:
+        profielen = haal_profielen([subject_id])
+        profiel = profielen.get(subject_id)
+        cache.set(key, profiel, timeout=300)
+    return profiel
+</code></pre>
+<h3>Verwachte UX</h3>
+<pre><code>t=0ms     Browser ontvangt HTML
+          → Pagina is direct zichtbaar met placeholders (initialen, &quot;Laden...&quot;)
+
+t=50ms    HTMX vuurt requests af voor profiel-cards
+          → Backend doet batch-call naar profielservice
+
+t=150ms   Profielservice retourneert profielen
+          → Backend rendert HTML-fragmenten
+
+t=200ms   HTMX swapt placeholders voor echte cards
+          → Naam, foto, functie verschijnen
+
+t=200ms+  Browser laadt avatars (loading=&quot;lazy&quot;)
+          → Foto's verschijnen als ze in beeld komen
+</code></pre>
+<h2>Implementatie-aantekeningen (valkuilen)</h2>
+<p>Een paar dingen die je tegenkomt bij het uitrollen van de integratie.</p>
+<h3>Subject_id is geen UUID</h3>
+<p><code>subject_id</code> is de SSO <code>sub</code>-claim — een string van wisselend formaat (bv. <code>demo-sub-diana</code>, of in productie een UUID-achtig token). Sla 'm op als <code>CharField</code>, niet <code>UUIDField</code>, anders crasht de save zodra het formaat afwijkt.</p>
+<h3>Session-cookie clash op localhost</h3>
+<p>Draait je afnemer ook op <code>localhost</code>? Dan delen browsers de cookies tussen poorten op dezelfde host, en overschrijft de default <code>sessionid</code>-cookie van de ene Django-app die van de andere — je afnemer-user wordt &quot;uitgelogd&quot; zodra de profielservice op <code>:8000</code> een sessie aanmaakt.</p>
+<p>Geef je afnemer-app unieke cookie-namen:</p>
+<pre><code class="language-python">SESSION_COOKIE_NAME = &quot;mijn_app_sessionid&quot;
+CSRF_COOKIE_NAME = &quot;mijn_app_csrftoken&quot;
+</code></pre>
+<h3>Container ↔ host networking (twee URLs nodig)</h3>
+<p>Draait je afnemer in Docker en de profielservice op de host? Dan praat de afnemer op twee manieren met de profielservice:</p>
+<ul>
+<li><strong>Browser-redirect</strong> (consent-scherm): URL moet door de <strong>browser</strong> bereikbaar zijn → <code>http://localhost:8000</code>.</li>
+<li><strong>Back-channel API-call</strong> (token-exchange + <code>/me</code> + batch): URL moet vanuit de <strong>container</strong> bereikbaar zijn → <code>http://host.docker.internal:8000</code> op macOS/Windows. Op Linux: <code>extra_hosts: [&quot;host.docker.internal:host-gateway&quot;]</code> toevoegen aan <code>docker-compose.yml</code>.</li>
+</ul>
+<p>Daarom twee aparte settings:</p>
+<pre><code class="language-python">PROFIELSERVICE_AUTHORIZE_URL = &quot;http://localhost:8000/o/authorize/&quot;        # browser
+PROFIELSERVICE_TOKEN_URL     = &quot;http://host.docker.internal:8000/o/token/&quot; # back-channel
+PROFIELSERVICE_API_URL       = &quot;http://host.docker.internal:8000&quot;          # back-channel
+</code></pre>
+<h3>ALLOWED_HOSTS-mismatch bij Host-header override</h3>
+<p>Als je via <code>host.docker.internal:8000</code> requests doet, ziet de profielservice die hostnaam in de <code>Host</code>-header. Staat hij niet in <code>ALLOWED_HOSTS</code>, dan antwoordt Django met een HTML 400-DEBUG-pagina — verraderlijk omdat <code>response.text</code> dan met <code>&lt;!DOCTYPE html&gt;</code> begint in plaats van een nette JSON-error.</p>
+<p>Lokale workaround: override de Host-header expliciet zodat de TCP-connectie naar <code>host.docker.internal</code> gaat maar de profielservice <code>localhost</code> ziet:</p>
+<pre><code class="language-python">PROFIELSERVICE_API_HOST_HEADER = &quot;localhost:8000&quot;
+# ...
+headers = {&quot;Authorization&quot;: f&quot;Bearer {token}&quot;}
+if settings.PROFIELSERVICE_API_HOST_HEADER:
+    headers[&quot;Host&quot;] = settings.PROFIELSERVICE_API_HOST_HEADER
+</code></pre>
+<p>Robuuste fix: zorg dat de profielservice <code>host.docker.internal</code> (of de echte hostname) in <code>ALLOWED_HOSTS</code> heeft.</p>
+<h3>.env-variabelen</h3>
+<p>Een minimale set:</p>
+<pre><code>MIJN_APP_CLIENT_SECRET=&lt;secret van de auth-code OAuth-client&gt;
+MIJN_APP_M2M_CLIENT_SECRET=&lt;secret van de -m2m OAuth-client&gt;
+PROFIELSERVICE_AUTHORIZE_URL=http://localhost:8000/o/authorize/
+PROFIELSERVICE_TOKEN_URL=http://host.docker.internal:8000/o/token/
+PROFIELSERVICE_API_URL=http://host.docker.internal:8000
+PROFIELSERVICE_API_HOST_HEADER=localhost:8000
+</code></pre>
+<p><code>env_file</code> wordt alleen geladen bij container-start, niet door autoreload. Na een <code>.env</code>-wijziging dus een herstart van je container.</p>
+</article>
+{% endraw %}
+{% endblock %}

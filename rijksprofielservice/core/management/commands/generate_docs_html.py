@@ -35,13 +35,17 @@ def _build_renderer() -> MarkdownIt:
 def render_doc_html(markdown_text: str, title: str) -> str:
     md = _build_renderer()
     body = md.render(markdown_text)
+    # Wrap in {% raw %} zodat code-voorbeelden met Django/Jinja2-syntax
+    # ({% url %}, {{ var }} etc.) letterlijk worden gerenderd en niet door de
+    # template-engine worden geïnterpreteerd.
     preamble = (
         '{% extends "core/docs/_layout.html" %}\n'
         f"{{% block title %}}{title} · Rijksprofielservice{{% endblock %}}\n"
         "{% block doc_body %}\n"
+        "{% raw %}\n"
         '<article class="privacy">\n'
     )
-    postamble = "</article>\n{% endblock %}\n"
+    postamble = "</article>\n{% endraw %}\n{% endblock %}\n"
     return preamble + body + postamble
 
 

@@ -26,6 +26,13 @@ DOCS = [
         "target": "rijksprofielservice/core/jinja2/core/docs/aansluitvoorwaarden.html",
         "template": "core/docs/aansluitvoorwaarden.html",
     },
+    {
+        "slug": "integratie",
+        "title": "Integratiehandleiding",
+        "source": "docs/integratie.md",
+        "target": "rijksprofielservice/core/jinja2/core/docs/integratie.html",
+        "template": "core/docs/integratie.html",
+    },
 ]
 
 

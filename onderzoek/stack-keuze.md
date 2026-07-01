@@ -77,7 +77,7 @@ single-codebase-kandidaten:
 ### Optie A — Django (monoliet) — aanbevolen
 
 - Past bij bestaand ontwerp, bestaand HTMX-patroon
-  ([integratie-patronen.md](../docs/integratie-patronen.md)), Wies-team-stack.
+  ([integratie.md](../docs/integratie.md#integratiepatronen-voor-ui-rendering)), Wies-team-stack.
 - Django admin gratis voor app-goedkeuring en audit-views
   (zie [keycloak-integratie.md](../docs/keycloak-integratie.md)).
 - Management commands voor `reconcile_users` zoals al uitgewerkt in
@@ -178,7 +178,7 @@ ontwerpdocumenten, team-fit).
    - `onderzoek/collega-profielen.md` — Laag 4 (lokale kopieën) expliciet
      verbieden in aansluitvoorwaarden; Laag 2 (HTTP caching) promoveren
      van best practice naar core-eis.
-   - `docs/integratie-patronen.md` — caching-guidance naar afnemers strakker
+   - `docs/integratie.md` — caching-guidance naar afnemers strakker
      formuleren ("geen lokale kopieën, geen in-memory cache van profieldata").
 
 ## Bronnen
@@ -190,7 +190,7 @@ ontwerpdocumenten, team-fit).
   Django
 - [docs/keycloak-integratie.md](../docs/keycloak-integratie.md) — stateless
   JWT-validatie, client-credentials
-- [docs/integratie-patronen.md](../docs/integratie-patronen.md) — Django
+- [docs/integratie.md](../docs/integratie.md) — Django
   + HTMX integratie-patroon voor afnemer-apps
 - [background/moza_profielservice.md](../background/moza_profielservice.md)
   — MOZA stack (Java 21 + Quarkus) als referentie

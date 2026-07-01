@@ -1,0 +1,37 @@
+
+2026-07-01 Patrick
+
+doel van het gesprek: pad bekend naar in gebruikname voor Wies
+
+- ondersteunende documenten
+  - business case
+  - uit dienst treding
+  - privacy voorwaarden
+  - aansluitdocument
+- stand demo nu
+ - echte oauth flow
+ - applicaties die toestemming krijgen
+ - laten zien met wies
+ - gedeeltelijk consent
+- plan volgende stappen
+
+vragen
+- Patrick zoekt uit hoe SSC-ICT de grondslag voor de gegevens uit SSO heeft geregeld. Misschien goede basis voor onze grondslag
+- next steps? wat is er nodig om dit voor Wies in gebruik te nemen?
+
+----------- notes
+
+Patrick vind het belangrijk om uit te vinden waar dit landt
+
+ODI van origine geen beheer organisatie
+
+-> gaat met Robbert Bos praten over digigilde rol
+-> daarna met René praten over waar de organisatie heen gaat
+
+Een met de aanpak van eerst 3 applicaties:
+- wies
+- zad
+- invulhulpen
+
+Demo: goed, patrick enthousiast
+
