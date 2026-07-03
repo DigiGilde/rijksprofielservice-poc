@@ -1,6 +1,6 @@
 # Rijksprofielservice
 
-Het doel van de rijksprofielservice is om een enkel portaal te hebben waarin ambtenaren hun profiel kunnen beheren welke applicaties gebruiken mogen maken van deze gegevens. Aan de gebruikers kant hoeven ambtenaren daardoor hun informatie maar op 1 plek hij te houden (data bij de bron) en voor applicaties is het makkelijker om dit te implementeren.
+Het doel van de rijksprofielservice is om een enkel portaal te hebben waarin ambtenaren hun profiel kunnen beheren welke applicaties gebruiken mogen maken van deze gegevens. Ambtenaren hoeven daardoor hun informatie maar op 1 plek hij te houden (data bij de bron) en voor applicaties is het makkelijker om dit te implementeren.
 
 ## Status
 Huidige status: PoC2 — echte OAuth Authorization Code flow voor consent (via `django-oauth-toolkit`); profielservice is zelf de OAuth Authorization Server voor zowel user-bound (Authorization Code + PKCE) als M2M (Client Credentials). Onderzoek (`onderzoek/`) en ontwerp (`docs/`) zijn de basis. De HTML-prototype in `demo/` blijft als UX-referentie.
